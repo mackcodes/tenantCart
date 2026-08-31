@@ -58,6 +58,10 @@ function VerifyEmail() {
                   {message}
                 </p>
 
+                <Link to="/resend-verification" className="auth-submit">
+                  Resend verification email
+                </Link>
+
                 <Link to="/login" className="auth-submit">
                   Back to log in
                 </Link>
