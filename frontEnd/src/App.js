@@ -32,6 +32,7 @@ import RegisterStore from "./pages/RegisterStore.js";
 import ForgotPassword from "./pages/ForgotPassword.js";
 import ResetPassword from "./pages/ResetPassword.js";
 import VerifyEmail from "./pages/VerifyEmail.js";
+import ResendVerification from "./pages/ResendVerification.js";
 import Dashboard from "./pages/Dashboard.js";
 
 const AdminRoute = ({ children }) => {
@@ -195,6 +196,15 @@ function AppRoutes() {
         element={
           <RecoveryRoute>
             <VerifyEmail />
+          </RecoveryRoute>
+        }
+      />
+
+      <Route
+        path="/resend-verification"
+        element={
+          <RecoveryRoute>
+            <ResendVerification />
           </RecoveryRoute>
         }
       />
