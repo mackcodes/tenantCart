@@ -1,12 +1,8 @@
-// AI Analytics Assistant — NOT YET IMPLEMENTED (stub for next build phase)
-// Flow: user NL question -> Gemini function-calling picks an aggregation "tool"
-// -> service executes real Mongo aggregation -> result sent back to Gemini for a
-// natural-language summary. Falls back to Groq (Llama) if Gemini errors/rate-limits.
+import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
+import mongoose from "mongoose";
 
-// import { GoogleGenAI } from "@google/genai";
-// import Groq from "groq-sdk";
-// import Order from "../models/Order.js";
-// import Product from "../models/Product.js";
+import Order from "../models/Order.js";
 
 const analyticsFunctionDeclarations = [
   {
@@ -36,12 +32,215 @@ const analyticsFunctionDeclarations = [
   },
 ];
 
-// const runAggregation = async (tenantId, functionName, args) => { ... build Mongo pipeline ... };
+const PAID_ORDER_STATUSES = ["paid", "shipped", "delivered"];
+const DEFAULT_LOOKBACK_DAYS = 30;
+const MAX_RESULTS = 20;
+
+const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const groqModel = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+
+const createServiceError = (message, statusCode = 500) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const getDateRange = (startDate, endDate) => {
+  const end = endDate ? new Date(endDate) : new Date();
+  const start = startDate
+    ? new Date(startDate)
+    : new Date(end.getTime() - DEFAULT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    throw createServiceError("Analytics date range is invalid", 400);
+  }
+
+  return { start, end };
+};
+
+const buildRevenuePipeline = (tenantId, { groupBy = "month", startDate, endDate } = {}) => {
+  if (!['day', 'week', 'month'].includes(groupBy)) {
+    throw createServiceError("Revenue analytics must be grouped by day, week, or month", 400);
+  }
+
+  const { start, end } = getDateRange(startDate, endDate);
+  const dateFormat = groupBy === "day" ? "%Y-%m-%d" : groupBy === "week" ? "%G-W%V" : "%Y-%m";
+
+  return [
+    {
+      $match: {
+        tenant: new mongoose.Types.ObjectId(tenantId),
+        status: { $in: PAID_ORDER_STATUSES },
+        createdAt: { $gte: start, $lte: end },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
+        revenue: { $sum: "$totalAmount" },
+        orders: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, period: "$_id", revenue: 1, orders: 1 } },
+  ];
+};
+
+const buildTopProductsPipeline = (tenantId, { metric = "revenue", limit = 5 } = {}) => {
+  if (!["quantity", "revenue"].includes(metric)) {
+    throw createServiceError("Top product analytics must use quantity or revenue", 400);
+  }
+
+  const resultLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 5, 1), MAX_RESULTS);
+  const metricExpression = metric === "quantity"
+    ? { $sum: "$items.quantity" }
+    : { $sum: { $multiply: ["$items.price", "$items.quantity"] } };
+
+  return [
+    {
+      $match: {
+        tenant: new mongoose.Types.ObjectId(tenantId),
+        status: { $in: PAID_ORDER_STATUSES },
+      },
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: "$items.product",
+        name: { $first: "$items.name" },
+        quantity: { $sum: "$items.quantity" },
+        revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+        rankingMetric: metricExpression,
+      },
+    },
+    { $sort: { rankingMetric: -1, name: 1 } },
+    { $limit: resultLimit },
+    { $project: { _id: 0, name: 1, quantity: 1, revenue: 1 } },
+  ];
+};
+
+const runAggregation = async (tenantId, functionName, args) => {
+  if (!mongoose.Types.ObjectId.isValid(tenantId)) {
+    throw createServiceError("Invalid tenant context", 400);
+  }
+
+  if (functionName === "getRevenueByPeriod") {
+    return Order.aggregate(buildRevenuePipeline(tenantId, args));
+  }
+
+  if (functionName === "getTopProducts") {
+    return Order.aggregate(buildTopProductsPipeline(tenantId, args));
+  }
+
+  throw createServiceError("Unsupported analytics request", 400);
+};
+
+const systemInstruction = "You are TenantCart's analytics assistant. Use the provided analytics tools before making claims about store data. Explain the result concisely, include currency amounts exactly as returned, and say clearly when no data is available. Do not invent metrics or data.";
+
+const answerWithGemini = async (tenantId, question) => {
+  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const response = await client.models.generateContent({
+    model: geminiModel,
+    contents: question,
+    config: {
+      systemInstruction,
+      tools: [{ functionDeclarations: analyticsFunctionDeclarations }],
+    },
+  });
+  const functionCall = response.functionCalls?.[0];
+
+  if (!functionCall) return response.text || "I could not determine which analytics to retrieve.";
+
+  const result = await runAggregation(tenantId, functionCall.name, functionCall.args || {});
+  const summary = await client.models.generateContent({
+    model: geminiModel,
+    contents: [
+      { role: "user", parts: [{ text: question }] },
+      { role: "model", parts: [{ functionCall }] },
+      {
+        role: "user",
+        parts: [{ functionResponse: { name: functionCall.name, response: { result } } }],
+      },
+    ],
+    config: { systemInstruction },
+  });
+
+  return summary.text || "I retrieved the analytics, but could not summarize them.";
+};
+
+const groqTools = analyticsFunctionDeclarations.map((declaration) => ({
+  type: "function",
+  function: {
+    name: declaration.name,
+    description: declaration.description,
+    parameters: {
+      ...declaration.parameters,
+      type: "object",
+      properties: Object.fromEntries(
+        Object.entries(declaration.parameters.properties).map(([name, schema]) => [
+          name,
+          { ...schema, type: schema.type.toLowerCase() },
+        ])
+      ),
+    },
+  },
+}));
+
+const answerWithGroq = async (tenantId, question) => {
+  const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const initial = await client.chat.completions.create({
+    model: groqModel,
+    messages: [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: question },
+    ],
+    tools: groqTools,
+    tool_choice: "auto",
+  });
+  const message = initial.choices[0]?.message;
+  const toolCall = message?.tool_calls?.[0];
+
+  if (!toolCall || toolCall.type !== "function") {
+    return message?.content || "I could not determine which analytics to retrieve.";
+  }
+
+  let args;
+  try {
+    args = JSON.parse(toolCall.function.arguments || "{}");
+  } catch {
+    throw createServiceError("The analytics provider returned invalid tool arguments");
+  }
+
+  const result = await runAggregation(tenantId, toolCall.function.name, args);
+  const summary = await client.chat.completions.create({
+    model: groqModel,
+    messages: [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: question },
+      message,
+      { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) },
+    ],
+  });
+
+  return summary.choices[0]?.message?.content || "I retrieved the analytics, but could not summarize them.";
+};
 
 export const answerQuestion = async (tenantId, question) => {
-  throw new Error(
-    "aiAnalyticsService not implemented yet — wire up Gemini function-calling with Groq fallback here"
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      return await answerWithGemini(tenantId, question);
+    } catch (geminiError) {
+      if (!process.env.GROQ_API_KEY) throw geminiError;
+    }
+  }
+
+  if (process.env.GROQ_API_KEY) return answerWithGroq(tenantId, question);
+
+  throw createServiceError(
+    "AI analytics is not configured. Set GEMINI_API_KEY or GROQ_API_KEY on the server.",
+    503
   );
 };
 
 export const _functionDeclarations = analyticsFunctionDeclarations;
+export const _analyticsInternals = { buildRevenuePipeline, buildTopProductsPipeline, runAggregation };

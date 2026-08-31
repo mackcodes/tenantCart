@@ -1,6 +1,6 @@
 # TenantCart — Project Status
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-08-31_
 
 ## Backend (`backEnd/`) — stable, all routes tested and working
 
@@ -11,7 +11,7 @@ _Last updated: 2026-08-27_
 | `productRoutes.js` | CRUD + image upload | ✅ Working |
 | `orderRoutes.js` | guest checkout, merchant list/detail/status update | ✅ Working, stock reservation/rollback included |
 | `storefrontRoutes.js` | public store/product view + owner-only preview (`/preview/mine`) | ✅ Working |
-| `aiAnalyticsRoutes.js` | ask | ⚠️ Route wired, but `aiAnalyticsService.answerQuestion` is a stub — always throws "not implemented" |
+| `aiAnalyticsRoutes.js` | ask | ✅ Gemini function calling with Groq fallback, tenant-scoped revenue and top-product analytics |
 
 ### Fixed this session
 - Server-crashing default-import bug (`protect` middleware) in `orderRoutes.js` / `adminTenantRoutes.js`.
@@ -27,7 +27,6 @@ _Last updated: 2026-08-27_
 
 ### Still stubbed by original design
 - `razorpayService.js` — payment onboarding, not implemented.
-- `aiAnalyticsService.js` — AI answers, not implemented.
 - No phone/OTP verification exists.
 
 ## Frontend (`frontEnd/`) — builds cleanly
@@ -42,7 +41,6 @@ No backend support exists yet for: Templates, Customers, Growth, Discounts, Cont
 Registration no longer forces store creation. New users land on `/dashboard` and create a store whenever they want, via a button on the dashboard or in the header.
 
 ## Known gaps / next candidates
-1. AI Analytics — needs a real Gemini/Groq integration to stop being a stub.
-2. Payment onboarding (Razorpay) — stub, blocks full automated tenant approval.
-3. Phone verification — no OTP provider chosen yet.
-4. Remaining `ComingSoon` sections have no backend models/controllers at all (customers, discounts, CMS content, shipping/policy settings) — need backend work first.
+1. Payment onboarding (Razorpay) — stub, blocks full automated tenant approval.
+2. Phone verification — no OTP provider chosen yet.
+3. Remaining `ComingSoon` sections have no backend models/controllers at all (customers, discounts, CMS content, shipping/policy settings) — need backend work first.
