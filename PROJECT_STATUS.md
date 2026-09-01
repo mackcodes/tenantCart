@@ -44,3 +44,4 @@ Registration no longer forces store creation. New users land on `/dashboard` and
 1. Payment onboarding (Razorpay) — stub, blocks full automated tenant approval.
 2. Phone verification — no OTP provider chosen yet.
 3. Remaining `ComingSoon` sections have no backend models/controllers at all (customers, discounts, CMS content, shipping/policy settings) — need backend work first.
+#prashant
