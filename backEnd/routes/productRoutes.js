@@ -8,11 +8,12 @@ import {
   deleteProduct,
 } from "../controllers/productController.js";
 import {protect} from "../middlewares/authMiddleware.js";
+import requireMerchant from "../middlewares/merchantMiddleware.js";
 import { uploadProductImage as uploadImageFile } from "../middlewares/productImageUpload.js";
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, requireMerchant);
 
 router.post(
   "/upload",

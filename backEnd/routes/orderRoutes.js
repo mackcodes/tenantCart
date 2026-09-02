@@ -8,6 +8,7 @@ import {
 } from "../controllers/orderController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
+import requireMerchant from "../middlewares/merchantMiddleware.js";
 import validateObjectId from "../middlewares/validateObjectId.js";
 
 const router = express.Router();
@@ -16,8 +17,8 @@ const router = express.Router();
 router.post("/checkout/:slug", createOrder);
 
 // Merchant-only — requires authentication
-router.get("/", protect, getMerchantOrders);
-router.get("/:id", protect, validateObjectId("id"), getOrderById);
-router.patch("/:id", protect, validateObjectId("id"), updateOrderStatus);
+router.get("/", protect, requireMerchant, getMerchantOrders);
+router.get("/:id", protect, requireMerchant, validateObjectId("id"), getOrderById);
+router.patch("/:id", protect, requireMerchant, validateObjectId("id"), updateOrderStatus);
 
 export default router;

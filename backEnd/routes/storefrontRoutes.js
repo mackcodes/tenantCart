@@ -8,12 +8,14 @@ import {
 
 import { protect } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import requireMerchant from "../middlewares/merchantMiddleware.js";
 
 const router = express.Router();
 
 router.get(
   "/preview/mine",
   protect,
+  requireMerchant,
   requireTenant,
   getStorefrontPreview
 );
