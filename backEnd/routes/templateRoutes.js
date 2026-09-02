@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { protect } from '../middlewares/authMiddleware.js';
+import requireMerchant from '../middlewares/merchantMiddleware.js';
 import Template from '../models/Template.js';
 import Tenant from '../models/Tenant.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -40,6 +41,7 @@ router.get(
 router.post(
   '/apply/:templateId',
   protect,
+  requireMerchant,
   asyncHandler(async (req, res) => {
     const tenant = await Tenant.findOne({
       owner: req.user._id,
@@ -90,6 +92,7 @@ router.post(
 router.post(
   '/generate',
   protect,
+  requireMerchant,
   asyncHandler(async (req, res) => {
     const { description, category } = req.body;
 

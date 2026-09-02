@@ -34,6 +34,7 @@ import ResetPassword from "./pages/ResetPassword.js";
 import VerifyEmail from "./pages/VerifyEmail.js";
 import ResendVerification from "./pages/ResendVerification.js";
 import Dashboard from "./pages/Dashboard.js";
+import DashboardTemplates from "./pages/DashboardTemplates.js";
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -89,6 +90,15 @@ const StoreSetupRoute = ({ children }) => {
     return (
       <Navigate
         to="/login"
+        replace
+      />
+    );
+  }
+
+  if (user.role !== "merchant") {
+    return (
+      <Navigate
+        to={user.role === "admin" ? "/dashboard/admin/tenants" : "/dashboard"}
         replace
       />
     );
@@ -242,7 +252,7 @@ function AppRoutes() {
         path="/dashboard/templates"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Templates" />
+            <DashboardTemplates />
           </ProtectedRoute>
         }
       />
