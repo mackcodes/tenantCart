@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from 'openai';
 import Groq from "groq-sdk";
 import mongoose from "mongoose";
 
@@ -36,7 +36,7 @@ const PAID_ORDER_STATUSES = ["paid", "shipped", "delivered"];
 const DEFAULT_LOOKBACK_DAYS = 30;
 const MAX_RESULTS = 20;
 
-const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const openrouterModel = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b";
 const groqModel = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 
 const createServiceError = (message, statusCode = 500) => {
@@ -137,35 +137,67 @@ const runAggregation = async (tenantId, functionName, args) => {
 
 const systemInstruction = "You are TenantCart's analytics assistant. Use the provided analytics tools before making claims about store data. Explain the result concisely, include currency amounts exactly as returned, and say clearly when no data is available. Do not invent metrics or data.";
 
-const answerWithGemini = async (tenantId, question) => {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await client.models.generateContent({
-    model: geminiModel,
-    contents: question,
-    config: {
-      systemInstruction,
-      tools: [{ functionDeclarations: analyticsFunctionDeclarations }],
+const answerWithOpenRouter = async (tenantId, question) => {
+  // Convert analytics function declarations to OpenAI tool format
+  const openrouterTools = analyticsFunctionDeclarations.map((declaration) => ({
+    type: "function",
+    function: {
+      name: declaration.name,
+      description: declaration.description,
+      parameters: declaration.parameters,
+    },
+  }));
+
+  const client = new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    defaultHeaders: {
+      'HTTP-Referer': 'https://tenantcart.app',
+      'X-Title': 'TenantCart',
     },
   });
-  const functionCall = response.functionCalls?.[0];
 
-  if (!functionCall) return response.text || "I could not determine which analytics to retrieve.";
-
-  const result = await runAggregation(tenantId, functionCall.name, functionCall.args || {});
-  const summary = await client.models.generateContent({
-    model: geminiModel,
-    contents: [
-      { role: "user", parts: [{ text: question }] },
-      { role: "model", parts: [{ functionCall }] },
-      {
-        role: "user",
-        parts: [{ functionResponse: { name: functionCall.name, response: { result } } }],
-      },
+  const response = await client.chat.completions.create({
+    model: openrouterModel,
+    tools: openrouterTools,
+    tool_choice: "auto",
+    messages: [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: question },
     ],
-    config: { systemInstruction },
   });
 
-  return summary.text || "I retrieved the analytics, but could not summarize them.";
+  const message = response.choices?.[0]?.message;
+  const toolCall = message?.tool_calls?.[0];
+
+  if (!toolCall || toolCall.type !== "function") {
+    return message?.content || "I could not determine which analytics to retrieve.";
+  }
+
+  let args;
+  try {
+    args = JSON.parse(toolCall.function.arguments || "{}");
+  } catch {
+    throw createServiceError("The analytics provider returned invalid tool arguments");
+  }
+
+  const result = await runAggregation(tenantId, toolCall.function.name, args);
+
+  // Get summary from OpenRouter
+  const summaryResponse = await client.chat.completions.create({
+    model: openrouterModel,
+    messages: [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: question },
+      message,
+      {
+        role: "user",
+        content: `Here are the results: ${JSON.stringify(result)}. Please provide a concise summary.`,
+      },
+    ],
+  });
+
+  return summaryResponse.choices?.[0]?.message?.content || `Analytics results: ${JSON.stringify(result)}`;
 };
 
 const groqTools = analyticsFunctionDeclarations.map((declaration) => ({
@@ -226,18 +258,32 @@ const answerWithGroq = async (tenantId, question) => {
 };
 
 export const answerQuestion = async (tenantId, question) => {
-  if (process.env.GEMINI_API_KEY) {
+  // Try OpenRouter (Nemotron) first
+  if (process.env.OPENROUTER_API_KEY) {
     try {
-      return await answerWithGemini(tenantId, question);
-    } catch (geminiError) {
-      if (!process.env.GROQ_API_KEY) throw geminiError;
+      console.log("Attempting analytics with OpenRouter (Nemotron)...");
+      return await answerWithOpenRouter(tenantId, question);
+    } catch (openrouterError) {
+      console.warn(
+        "OpenRouter analytics failed:",
+        openrouterError.message
+      );
     }
   }
 
-  if (process.env.GROQ_API_KEY) return answerWithGroq(tenantId, question);
+  // Fallback to Groq
+  if (process.env.GROQ_API_KEY) {
+    try {
+      console.log("Falling back to Groq for analytics...");
+      return await answerWithGroq(tenantId, question);
+    } catch (groqError) {
+      console.error("Groq analytics failed:", groqError.message);
+      throw groqError;
+    }
+  }
 
   throw createServiceError(
-    "AI analytics is not configured. Set GEMINI_API_KEY or GROQ_API_KEY on the server.",
+    "AI analytics is not configured. Set OPENROUTER_API_KEY or GROQ_API_KEY on the server.",
     503
   );
 };
