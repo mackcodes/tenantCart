@@ -11,9 +11,11 @@ import {
 
 import { checkout } from "../services/orderService.js";
 import { initiatePayment, verifyPayment } from "../services/paymentService.js";
+import { getStorefront } from "../services/storefrontService.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
+import "../styles/checkout.css";
 
 const getCartKey = (slug) => `tenantcart_cart_${slug}`;
 
@@ -59,12 +61,33 @@ const Checkout = () => {
   const navigate = useNavigate();
 
   const [cart, setCart] = useState({});
+  const [shipping, setShipping] = useState({
+    flatRate: 0,
+    freeShippingThreshold: 1000,
+    localPickupEnabled: false,
+    estimatedDelivery: "3-5 business days",
+  });
+  const [shippingMethod, setShippingMethod] = useState("delivery");
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderPlaced, setOrderPlaced] = useState(null);
 
   useEffect(() => {
+    const loadShipping = async () => {
+      try {
+        const data = await getStorefront(slug);
+        setShipping((currentShipping) => ({
+          ...currentShipping,
+          ...(data.store?.shipping || {}),
+        }));
+      } catch (requestError) {
+        // The order endpoint remains authoritative if shipping settings cannot load.
+      }
+    };
+
+    loadShipping();
+
     const storedCart = sessionStorage.getItem(getCartKey(slug));
 
     if (storedCart) {
@@ -81,6 +104,12 @@ const Checkout = () => {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const shippingAmount = shippingMethod === "pickup"
+    ? 0
+    : cartTotal >= Number(shipping.freeShippingThreshold || 0)
+      ? 0
+      : Number(shipping.flatRate || 0);
+  const checkoutTotal = cartTotal + shippingAmount;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -116,6 +145,7 @@ const Checkout = () => {
           postalCode: form.postalCode,
           country: form.country,
         },
+        shippingMethod,
         items: cartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -261,14 +291,62 @@ const Checkout = () => {
               ))}
 
               <div className="storefront-cart-total">
-                <span>Total</span>
+                <span>Items</span>
                 <span>{formatCurrency(cartTotal)}</span>
+              </div>
+
+              <div className="storefront-cart-total">
+                <span>{shippingMethod === "pickup" ? "Pickup" : "Shipping"}</span>
+                <span>
+                  {shippingAmount === 0 ? "Free" : formatCurrency(shippingAmount)}
+                </span>
+              </div>
+
+              <div className="storefront-cart-total">
+                <strong>Total</strong>
+                <strong>{formatCurrency(checkoutTotal)}</strong>
               </div>
             </>
           )}
         </div>
 
         <form className="checkout-form" onSubmit={handleSubmit}>
+          <fieldset className="checkout-shipping-method wide">
+            <legend>Delivery method</legend>
+            <label>
+              <input
+                type="radio"
+                name="shippingMethod"
+                value="delivery"
+                checked={shippingMethod === "delivery"}
+                onChange={(event) => setShippingMethod(event.target.value)}
+              />
+              <span>
+                <strong>Delivery</strong>
+                <small>
+                  {shippingAmount === 0
+                    ? "Free delivery"
+                    : `${formatCurrency(shippingAmount)} · ${shipping.estimatedDelivery}`}
+                </small>
+              </span>
+            </label>
+            {shipping.localPickupEnabled && (
+              <label>
+                <input
+                  type="radio"
+                  name="shippingMethod"
+                  value="pickup"
+                  checked={shippingMethod === "pickup"}
+                  onChange={(event) => setShippingMethod(event.target.value)}
+                />
+                <span>
+                  <strong>Local pickup</strong>
+                  <small>Collect from the store for free</small>
+                </span>
+              </label>
+            )}
+          </fieldset>
+
           <label>
             Full name
             <input
@@ -305,7 +383,7 @@ const Checkout = () => {
               name="line1"
               value={form.line1}
               onChange={handleChange}
-              required
+              required={shippingMethod === "delivery"}
             />
           </label>
 
@@ -324,7 +402,7 @@ const Checkout = () => {
               name="city"
               value={form.city}
               onChange={handleChange}
-              required
+              required={shippingMethod === "delivery"}
             />
           </label>
 
@@ -334,7 +412,7 @@ const Checkout = () => {
               name="state"
               value={form.state}
               onChange={handleChange}
-              required
+              required={shippingMethod === "delivery"}
             />
           </label>
 
@@ -344,7 +422,7 @@ const Checkout = () => {
               name="postalCode"
               value={form.postalCode}
               onChange={handleChange}
-              required
+              required={shippingMethod === "delivery"}
             />
           </label>
 
@@ -354,7 +432,7 @@ const Checkout = () => {
               name="country"
               value={form.country}
               onChange={handleChange}
-              required
+              required={shippingMethod === "delivery"}
             />
           </label>
 

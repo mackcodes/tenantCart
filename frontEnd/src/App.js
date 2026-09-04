@@ -37,6 +37,8 @@ import Dashboard from "./pages/Dashboard.js";
 import DashboardTemplates from "./pages/DashboardTemplates.js";
 import PaymentSettings from "./pages/PaymentSettings.js";
 import AccountSettings from "./pages/AccountSettings.js";
+import ShippingSettings from "./pages/ShippingSettings.js";
+import DashboardTeam from "./pages/DashboardTeam.js";
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -374,7 +376,7 @@ function AppRoutes() {
         path="/dashboard/settings/shipping"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Shipping settings" />
+            <ShippingSettings />
           </ProtectedRoute>
         }
       />
@@ -384,6 +386,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ComingSoon title="Store policies" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard/settings/team"
+        element={
+          <ProtectedRoute>
+            <DashboardTeam />
           </ProtectedRoute>
         }
       />

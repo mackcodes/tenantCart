@@ -17,3 +17,21 @@ export const deleteCurrentTenant = (confirmationSlug) =>
     method: "DELETE",
     body: { confirmationSlug },
   });
+
+export const getTenantMembers = () =>
+  api("/tenants/current/members");
+
+export const addTenantMember = (email, role) =>
+  api("/tenants/current/members", {
+    method: "POST",
+    body: { email, role },
+  });
+
+export const updateTenantMember = (userId, updates) =>
+  api(`/tenants/current/members/${userId}`, {
+    method: "PATCH",
+    body: updates,
+  });
+
+export const getTenantAuditLogs = () =>
+  api("/tenants/current/audit-logs");

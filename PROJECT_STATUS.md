@@ -1,6 +1,6 @@
 # TenantCart — Project Status
 
-_Last updated: 2026-08-31_
+_Last updated: 2026-09-05 (team management UI added)_
 
 ## Backend (`backEnd/`) — stable, all routes tested and working
 
@@ -9,39 +9,57 @@ _Last updated: 2026-08-31_
 | `authRoutes.js` | register-account, register-store, login, logout, me, forgot/reset-password, verify-email/:token, resend-verification | ✅ Full auth + email verification implemented |
 | `adminTenantRoutes.js` | list, review, approve, reject, suspend, request-information, re-evaluate | ✅ Full admin approval workflow |
 | `productRoutes.js` | CRUD + image upload | ✅ Working |
-| `orderRoutes.js` | guest checkout, merchant list/detail/status update | ✅ Working, stock reservation/rollback included |
-| `storefrontRoutes.js` | public store/product view + owner-only preview (`/preview/mine`) | ✅ Working |
+| `orderRoutes.js` | guest checkout, merchant list/detail/status update | ✅ Working, stock reservation/rollback and shipping method/amount included |
+| `storefrontRoutes.js` | public store/product view + owner-only preview (`/preview/mine`) | ✅ Working, now returns tenant shipping/address for checkout |
+| `paymentRoutes.js` | Razorpay order init, payment verification, merchant payment settings | ⚠️ Working end-to-end, but production readiness (webhooks, refunds, reconciliation) is unaddressed |
+| `templateRoutes.js` | list templates, generate AI template, apply template | ✅ Working, five prebuilt templates + AI generation via OpenRouter/Groq |
+| `tenantRoutes.js` | account settings, data export, tenant deletion | ✅ Working |
+| `shippingRoutes.js` | get/update shipping settings (flat rate, free-shipping threshold, local pickup, estimated delivery) | ✅ New — implemented this session |
 | `aiAnalyticsRoutes.js` | ask | ✅ Gemini function calling with Groq fallback, tenant-scoped revenue and top-product analytics |
 
-### Fixed this session
-- Server-crashing default-import bug (`protect` middleware) in `orderRoutes.js` / `adminTenantRoutes.js`.
-- `aiAnalyticsRoutes.js` was never mounted in `app.js` — fixed.
-- Dead/duplicate `status` field in the `Tenant` schema.
-- Fake `slugAvailable` check in `evaluateTenant` (was hardcoded `true`) — now a real DB lookup.
-- No way to re-run automated tenant approval after creation — added `PATCH /admin/tenants/:id/re-evaluate`.
-- No email verification flow existed at all — implemented registration email, `verify-email/:token`, `resend-verification`, with tenant sync + automatic re-evaluation on verify.
-- `typeof null === "object"` crash in `DashboardHeader.js` once storeless users could reach the dashboard.
-- Mongo connection had no `dbName`, silently defaulting to the `test` database — fixed to use `MONGO_DATABASE`.
-- Added `scripts/promoteAdmin.js` — CLI-only admin bootstrap (deliberately not an HTTP endpoint, to avoid privilege escalation).
-- Added `/admin/login` dedicated admin entry point (not linked from merchant login, admins navigate directly).
+### Implemented since last update (2026-08-31 → 2026-09-05)
+- Storefront template library: five prebuilt templates with idempotent seeding, AI-generated templates (OpenRouter + Groq fallback, session limits), apply-to-storefront flow, "Already applied" state persisted on tenant branding.
+- Account settings: tenant data export and owner-confirmed tenant deletion.
+- Shipping: `Tenant.shipping` schema (flat rate, free-shipping threshold, local pickup toggle, estimated delivery text), `Order.shippingMethod`/`shippingAmount`, `shippingController.js` + `shippingRoutes.js`, checkout server-side shipping-cost calculation (delivery vs. pickup), mounted in `app.js`.
 
-### Still stubbed by original design
-- `razorpayService.js` — payment onboarding, not implemented.
+### Still stubbed / incomplete by original design
+- `razorpayService.js` — initialization and verification work, but no webhook handling, refund flow, or reconciliation.
 - No phone/OTP verification exists.
+- No customer model/controller (guest checkout stores customer details inline on the order, no dedicated customer entity).
+- No discount/coupon model.
+- No store policy (refund/privacy/terms/shipping/cancellation) storage.
+- No CMS for homepage content, banners, blog, FAQs.
+- No multi-market (currency/tax/language/region) support.
+- No subscription/billing model.
+- ~~Tenant membership/audit-log backend routes exist but have no frontend screens~~ — now implemented (see below).
 
 ## Frontend (`frontEnd/`) — builds cleanly
 
 ### Fully working pages
-Landing, Login, Admin Login (`/admin/login`), Register Account, Register Store (now decoupled — optional, not forced), Forgot/Reset Password, Verify Email, Dashboard (home + "Create your store" CTA), Merchant Products, Merchant Orders, Admin Tenants list + review, Public Storefront + Checkout (session-cart based), Store Preview (owner-only, bypasses approval gate).
+Landing, Login, Admin Login (`/admin/login`), Register Account, Register Store (decoupled — optional, not forced), Forgot/Reset Password, Verify Email, Resend Verification, Dashboard (home + "Create your store" CTA), Merchant Products, Merchant Orders (now shows shipping method/cost per order), Merchant Analytics, Templates (browse/generate/preview/apply, applied-state button), Payment Settings, Account Settings (export + deletion), Admin Tenants list + review, Public Storefront + Checkout (session-cart based, now with delivery-vs-pickup selection and shipping cost), Store Preview (owner-only, bypasses approval gate), **Shipping Settings (new)**.
 
 ### Still `ComingSoon` placeholders
-No backend support exists yet for: Templates, Customers, Growth, Discounts, Content, Markets, Payment/Shipping/Store-policy settings, Billing, Account, Profile, Help.
+No backend support exists yet for: Customers, Growth, Discounts, Content, Markets, Store policies, Billing, Profile, Help. (Templates, Payment settings, and Shipping settings have all moved out of this list since the last update.)
 
 ### Recent flow change
 Registration no longer forces store creation. New users land on `/dashboard` and create a store whenever they want, via a button on the dashboard or in the header.
 
+### Implemented since last update (2026-09-05, this session)
+Team management page (`/dashboard/settings/team`): lists tenant members (name/email/role/status), lets owners/admins invite existing users by email with an assigned role (admin/manager/staff), change a member's role, and suspend/reactivate members (owner row is protected in the UI, matching backend rules). Also renders the tenant audit log (last 100 entries). Invited members now receive an email notification (via the existing `sendEmail` util) when added to a tenant. No backend model changes were needed — this wires up the existing `tenantRoutes.js` member/audit-log endpoints plus one small controller addition (invite email). Added `tenantService.js` functions (`getTenantMembers`, `addTenantMember`, `updateTenantMember`, `getTenantAuditLogs`), new `DashboardTeam.js` page + test suite, sidebar link, and route registration.
+
+## Testing status
+- Backend: 8 tests passing (`backEnd/tests/`).
+- Frontend: 2 test suites / 7 tests passing under CRA's default discovery (`src/pages/AccountSettings.test.js`, `src/pages/DashboardTeam.test.js`). `frontEnd/tests/App.test.js` lives outside `src/` and is not picked up by default CRA config.
+- Frontend production build: passing.
+- No coverage yet for: login/verification edge cases, email resend failures, template listing/applied-state, payment settings, product workflows, order workflows, tenant authorization boundaries, storefront/checkout behavior, or the new shipping settings/checkout flow.
+
 ## Known gaps / next candidates
-1. Payment onboarding (Razorpay) — stub, blocks full automated tenant approval.
-2. Phone verification — no OTP provider chosen yet.
-3. Remaining `ComingSoon` sections have no backend models/controllers at all (customers, discounts, CMS content, shipping/policy settings) — need backend work first.
-#prashant
+1. Store policies (refund/privacy/terms/cancellation) — no model, no storefront/checkout display.
+2. Customer management — no model, no list/search/detail/order-history UI.
+3. Discounts/coupons — no model, no checkout validation.
+4. Billing and plans — no subscription model or billing screen.
+5. Payment production-readiness — webhook strategy, refunds, reconciliation.
+6. Expand automated test coverage (frontend especially, including the new team management page).
+
+## Working branch note
+The shipping feature above (backend model/controller/routes + frontend settings page + checkout integration) is currently on `feature/shipping-and-checkout` and **not yet merged into `main`**.
