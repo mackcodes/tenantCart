@@ -7,6 +7,7 @@ const VerifyEmailBanner = () => {
   const { user } = useAuth();
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   if (!user || user.emailVerified) {
     return null;
@@ -15,8 +16,16 @@ const VerifyEmailBanner = () => {
   const handleResend = async () => {
     try {
       setSending(true);
-      await resendVerificationEmail(user.email);
+      setError("");
+      const data = await resendVerificationEmail(user.email);
+      if (!data.emailSent) {
+        throw new Error(
+          data.message || "Unable to send the verification email."
+        );
+      }
       setSent(true);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to send the verification email.");
     } finally {
       setSending(false);
     }
@@ -28,7 +37,9 @@ const VerifyEmailBanner = () => {
         <span>Verification email sent — check your inbox.</span>
       ) : (
         <>
-          <span>Please verify your email address to unlock automated store approval.</span>
+          <span>
+            {error || "Please verify your email address to unlock automated store approval."}
+          </span>
 
           <button
             type="button"

@@ -126,7 +126,12 @@ const tenantSchema = new mongoose.Schema(
     },
 
     razorpay: {
-      accountId: {
+      keyId: {
+        type: String,
+        default: null,
+      },
+
+      keySecret: {
         type: String,
         default: null,
       },
@@ -225,5 +230,9 @@ verification: {
     timestamps: true,
   }
 );
+
+// The current product supports one owned store per merchant. Memberships allow
+// additional users to work in a tenant without becoming its owner.
+tenantSchema.index({ owner: 1 }, { unique: true });
 
 export default mongoose.model("Tenant", tenantSchema);

@@ -2,11 +2,15 @@ import express from 'express';
 import crypto from 'node:crypto';
 
 import { protect } from '../middlewares/authMiddleware.js';
-import requireMerchant from '../middlewares/merchantMiddleware.js';
+import {
+  requireTenant,
+  requireTenantRole,
+} from '../middlewares/tenantMiddleware.js';
 import Template from '../models/Template.js';
 import Tenant from '../models/Tenant.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { generateTemplateWithAI } from '../services/templateGenerationService.js';
+import { recordTenantAudit } from '../services/tenantAuditService.js';
 
 const router = express.Router();
 const GENERATION_LIMIT = 3;
@@ -54,25 +58,42 @@ const getGenerationUsage = (session) => ({
 router.get(
   '/',
   protect,
-  requireMerchant,
+  requireTenant,
+  requireTenantRole('owner', 'admin', 'manager', 'staff'),
   asyncHandler(async (req, res) => {
+    const tenant = await Tenant.findById(req.tenantId)
+      .select("branding.template branding.templateId")
+      .lean();
+
     const templates = await Template.find({
       $or: [
         { isAIGenerated: false },
-        { createdBy: req.user._id },
+        {
+          isAIGenerated: true,
+          tenant: req.tenantId,
+        },
       ],
     })
       .select('-__v')
       .sort({ category: 1, name: 1 });
 
-    res.json(templates);
+    const activeTemplateId = String(tenant?.branding?.template || "");
+    const activeTemplateName = tenant?.branding?.templateId || "";
+
+    res.json(templates.map((template) => ({
+      ...template.toObject(),
+      isApplied:
+        String(template._id) === activeTemplateId ||
+        template.name === activeTemplateName,
+    })));
   })
 );
 
 router.get(
   '/generation-limit',
   protect,
-  requireMerchant,
+  requireTenant,
+  requireTenantRole('owner', 'admin', 'manager'),
   (req, res) => {
     const session = getGenerationSession(req, res);
     res.json(getGenerationUsage(session));
@@ -83,7 +104,10 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const template = await Template.findById(req.params.id);
+    const template = await Template.findOne({
+      _id: req.params.id,
+      isAIGenerated: false,
+    });
 
     if (!template) {
       return res.status(404).json({
@@ -99,11 +123,10 @@ router.get(
 router.post(
   '/apply/:templateId',
   protect,
-  requireMerchant,
+  requireTenant,
+  requireTenantRole('owner', 'admin', 'manager'),
   asyncHandler(async (req, res) => {
-    const tenant = await Tenant.findOne({
-      owner: req.user._id,
-    });
+    const tenant = await Tenant.findById(req.tenantId);
 
     if (!tenant) {
       return res.status(404).json({
@@ -111,7 +134,16 @@ router.post(
       });
     }
 
-    const template = await Template.findById(req.params.templateId);
+    const template = await Template.findOne({
+      _id: req.params.templateId,
+      $or: [
+        { isAIGenerated: false },
+        {
+          isAIGenerated: true,
+          tenant: req.tenantId,
+        },
+      ],
+    });
 
     if (!template) {
       return res.status(404).json({
@@ -131,8 +163,19 @@ router.post(
 
     await tenant.save();
 
+    await recordTenantAudit({
+      tenantId: req.tenantId,
+      actorId: req.user._id,
+      action: 'template.applied',
+      targetType: 'template',
+      targetId: template._id,
+      metadata: { name: template.name },
+      request: req,
+    });
+
     res.json({
       message: 'Template applied successfully',
+      templateId: template._id,
       tenant: {
         _id: tenant._id,
         storeName: tenant.storeName,
@@ -147,7 +190,8 @@ router.post(
 router.post(
   '/generate',
   protect,
-  requireMerchant,
+  requireTenant,
+  requireTenantRole('owner', 'admin', 'manager'),
   asyncHandler(async (req, res) => {
     const { description, category } = req.body;
 
@@ -184,9 +228,20 @@ router.post(
       isAIGenerated: true,
       config: generatedConfig,
       createdBy: req.user._id,
+      tenant: req.tenantId,
     });
 
     session.count += 1;
+
+    await recordTenantAudit({
+      tenantId: req.tenantId,
+      actorId: req.user._id,
+      action: 'template.generated',
+      targetType: 'template',
+      targetId: template._id,
+      metadata: { category: template.category },
+      request: req,
+    });
 
     res.json({
       message: 'Template generated successfully',

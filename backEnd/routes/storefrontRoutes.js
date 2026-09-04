@@ -7,16 +7,18 @@ import {
 } from "../controllers/storefrontController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
-import { requireTenant } from "../middlewares/tenantMiddleware.js";
-import requireMerchant from "../middlewares/merchantMiddleware.js";
+import {
+  requireTenant,
+  requireTenantRole,
+} from "../middlewares/tenantMiddleware.js";
 
 const router = express.Router();
 
 router.get(
   "/preview/mine",
   protect,
-  requireMerchant,
   requireTenant,
+  requireTenantRole("owner", "admin", "manager", "staff"),
   getStorefrontPreview
 );
 

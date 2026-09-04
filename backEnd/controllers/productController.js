@@ -1,5 +1,6 @@
 import slugify from "slugify";
 import Product from "../models/Product.js";
+import { recordTenantAudit } from "../services/tenantAuditService.js";
 
 const createUniqueSlug = async (
   name,
@@ -40,10 +41,7 @@ const createUniqueSlug = async (
 };
 
 const getTenantId = (req) => {
-  return (
-    req.user.tenantId ||
-    req.user.tenant?._id
-  );
+  return req.tenantId;
 };
 
 export const uploadProductImage = async (
@@ -60,7 +58,7 @@ export const uploadProductImage = async (
 
     const imageUrl = `${req.protocol}://${req.get(
       "host"
-    )}/uploads/products/${req.file.filename}`;
+    )}/uploads/products/${req.tenantId}/${req.file.filename}`;
 
     return res.status(201).json({
       message: "Image uploaded successfully",
@@ -149,6 +147,16 @@ export const createProduct = async (
         isActive === undefined
           ? true
           : Boolean(isActive),
+    });
+
+    await recordTenantAudit({
+      tenantId,
+      actorId: req.user._id,
+      action: "product.created",
+      targetType: "product",
+      targetId: product._id,
+      metadata: { name: product.name },
+      request: req,
     });
 
     return res.status(201).json({
@@ -308,6 +316,16 @@ export const updateProduct = async (
 
     await product.save();
 
+    await recordTenantAudit({
+      tenantId,
+      actorId: req.user._id,
+      action: "product.updated",
+      targetType: "product",
+      targetId: product._id,
+      metadata: { name: product.name },
+      request: req,
+    });
+
     return res.json({
       message: "Product updated successfully",
       product,
@@ -336,6 +354,16 @@ export const deleteProduct = async (
         message: "Product not found",
       });
     }
+
+    await recordTenantAudit({
+      tenantId,
+      actorId: req.user._id,
+      action: "product.deleted",
+      targetType: "product",
+      targetId: product._id,
+      metadata: { name: product.name },
+      request: req,
+    });
 
     return res.json({
       message: "Product deleted successfully",

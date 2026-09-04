@@ -3,18 +3,24 @@ import path from "path";
 
 import multer from "multer";
 
-const uploadDirectory = path.join(
+const getUploadDirectory = (tenantId) => path.join(
   process.cwd(),
   "uploads",
-  "products"
+  "products",
+  String(tenantId)
 );
 
-fs.mkdirSync(uploadDirectory, {
-  recursive: true,
-});
-
 const storage = multer.diskStorage({
-  destination: uploadDirectory,
+  destination: (req, file, callback) => {
+    if (!req.tenantId) {
+      callback(new Error("Tenant context is required for image uploads"));
+      return;
+    }
+
+    const uploadDirectory = getUploadDirectory(req.tenantId);
+    fs.mkdirSync(uploadDirectory, { recursive: true });
+    callback(null, uploadDirectory);
+  },
   filename: (req, file, callback) => {
     const extension = path.extname(file.originalname)
       .toLowerCase();

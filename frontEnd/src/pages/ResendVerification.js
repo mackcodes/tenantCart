@@ -19,10 +19,12 @@ function ResendVerification() {
 
     try {
       const data = await resendVerificationEmail(email.trim());
-      setMessage(
-        data.message ||
-          "If that account needs verification, an email has been sent."
-      );
+        if (!data.emailSent) {
+          throw new Error(
+            data.message || "Unable to send the verification email"
+          );
+        }
+        setMessage(data.message || "Verification email sent");
     } catch (requestError) {
       setError(requestError.message || "Unable to resend the verification email");
     } finally {

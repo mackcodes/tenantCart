@@ -94,8 +94,19 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
     },
 
+    razorpayOrderId: {
+      type: String,
+      default: null,
+    },
+
     paymentRef: {
       type: String,
+      default: null,
+    },
+
+    checkoutTokenHash: {
+      type: String,
+      select: false,
       default: null,
     },
   },
