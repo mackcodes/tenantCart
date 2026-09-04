@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import DashboardLayout from "../components/dashboard/DashboardLayout.js";
 import {
   applyTemplate,
   generateTemplate,
+  getGenerationLimit,
   getTemplates,
 } from "../services/templateService.js";
 
@@ -22,13 +24,18 @@ const DashboardTemplates = () => {
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [generation, setGeneration] = useState({ limit: 3, used: 0, remaining: 3 });
 
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        const data = await getTemplates();
-        const loadedTemplates = data.templates || data || [];
+        const [templatesData, generationData] = await Promise.all([
+          getTemplates(),
+          getGenerationLimit(),
+        ]);
+        const loadedTemplates = templatesData.templates || templatesData || [];
         setTemplates(loadedTemplates);
+        setGeneration(generationData);
         if (loadedTemplates.length > 0) {
           setSelectedTemplate(loadedTemplates[0]);
         }
@@ -63,6 +70,7 @@ const DashboardTemplates = () => {
       const generatedTemplate = data.template;
       setTemplates((currentTemplates) => [generatedTemplate, ...currentTemplates]);
       setSelectedTemplate(generatedTemplate);
+      setGeneration(data.generation);
       setDescription("");
       setNotice("Your AI template is ready to preview.");
     } catch (requestError) {
@@ -172,6 +180,9 @@ const DashboardTemplates = () => {
                   <h2>Describe the feeling</h2>
                 </div>
               </div>
+              <p className="ai-template-form__quota">
+                <strong>{generation.remaining}</strong> of {generation.limit} AI directions remaining this session
+              </p>
               <label htmlFor="template-description">What should your store feel like?</label>
               <textarea
                 id="template-description"
@@ -187,8 +198,8 @@ const DashboardTemplates = () => {
                     <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
-                <button type="submit" className="button button--primary" disabled={generating}>
-                  {generating ? "Generating..." : "Generate with AI"}
+                <button type="submit" className="button button--primary" disabled={generating || generation.remaining === 0}>
+                  {generating ? "Generating..." : generation.remaining === 0 ? "Session limit reached" : "Generate with AI"}
                 </button>
               </div>
             </form>
@@ -214,7 +225,7 @@ const DashboardTemplates = () => {
                   <div className="preview-hero">
                     <span>New season</span>
                     <h2>Objects with a point of view.</h2>
-                    <button type="button">Explore collection</button>
+                    <button type="button" onClick={handleApply} disabled={applying}>Apply this style</button>
                   </div>
                   <div className="preview-products"><span /><span /><span /></div>
                 </div>
@@ -232,6 +243,7 @@ const DashboardTemplates = () => {
                   <button type="button" className="button button--primary template-apply-button" onClick={handleApply} disabled={applying}>
                     {applying ? "Applying..." : "Apply to storefront"}
                   </button>
+                  <Link to="/store-preview" className="template-preview-link">Open storefront preview</Link>
                 </div>
               </>
             ) : (

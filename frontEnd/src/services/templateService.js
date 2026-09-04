@@ -11,6 +11,10 @@ export const generateTemplate = (description, category) => {
   });
 };
 
+export const getGenerationLimit = () => {
+  return request("/templates/generation-limit");
+};
+
 export const applyTemplate = (templateId) => {
   return request(`/templates/apply/${templateId}`, {
     method: "POST",

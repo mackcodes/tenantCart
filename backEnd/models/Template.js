@@ -94,10 +94,6 @@ const templateSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
       },
-      showNewsletter: {
-        type: Boolean,
-        default: false,
-      },
 
       productCardStyle: {
         type: String,

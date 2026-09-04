@@ -112,6 +112,17 @@ const tenantSchema = new mongoose.Schema(
         type: String,
         default: "default",
       },
+
+      template: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Template",
+        default: null,
+      },
+
+      customConfig: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+      },
     },
 
     razorpay: {

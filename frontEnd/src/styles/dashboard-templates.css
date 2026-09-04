@@ -237,6 +237,17 @@
   font-weight: 700;
 }
 
+.ai-template-form__quota {
+  margin: -4px 0 17px;
+  color: #748178;
+  font-size: 12px;
+}
+
+.ai-template-form__quota strong {
+  color: #48634c;
+  font-size: 14px;
+}
+
 .ai-template-form textarea {
   display: block;
   width: 100%;
@@ -417,6 +428,15 @@
 
 .template-apply-button {
   justify-self: start;
+}
+
+.template-preview-link {
+  justify-self: start;
+  color: #526f58;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 @media (max-width: 920px) {

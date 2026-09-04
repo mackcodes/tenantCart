@@ -100,7 +100,7 @@ const sidebarSections = [
 ];
 
 const adminSidebarSection = {
-  title: "Admin",
+  title: "Administration",
   items: [
     {
       label: "Tenant approvals",
@@ -115,13 +115,13 @@ const DashboardSidebar = () => {
 
   const sections =
     user?.role === "admin"
-      ? [...sidebarSections, adminSidebarSection]
+      ? [adminSidebarSection]
       : sidebarSections;
 
   return (
     <aside className="dashboard-sidebar">
       <Link
-        to="/dashboard"
+        to={user?.role === "admin" ? "/dashboard/admin/tenants" : "/dashboard"}
         className="dashboard-logo"
       >
         Tenant<span>Cart</span>
@@ -173,21 +173,23 @@ const DashboardSidebar = () => {
         )}
       </nav>
 
-      <div className="sidebar-footer">
-        <Link
-          to="/help"
-          className="sidebar-link"
-        >
-          <span
-            className="sidebar-link__icon"
-            aria-hidden="true"
+      {user?.role !== "admin" && (
+        <div className="sidebar-footer">
+          <Link
+            to="/help"
+            className="sidebar-link"
           >
-            ?
-          </span>
+            <span
+              className="sidebar-link__icon"
+              aria-hidden="true"
+            >
+              ?
+            </span>
 
-          Help center
-        </Link>
-      </div>
+            Help center
+          </Link>
+        </div>
+      )}
     </aside>
   );
 };
