@@ -67,6 +67,19 @@ const orderSchema = new mongoose.Schema(
       country: { type: String, default: "India", trim: true },
     },
 
+    shippingMethod: {
+      type: String,
+      enum: ["delivery", "pickup"],
+      default: "delivery",
+    },
+
+    shippingAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+
     items: {
       type: [orderItemSchema],
       required: true,

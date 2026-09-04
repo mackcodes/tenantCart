@@ -142,6 +142,32 @@ const tenantSchema = new mongoose.Schema(
       },
     },
 
+    shipping: {
+      flatRate: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+
+      freeShippingThreshold: {
+        type: Number,
+        default: 1000,
+        min: 0,
+      },
+
+      localPickupEnabled: {
+        type: Boolean,
+        default: false,
+      },
+
+      estimatedDelivery: {
+        type: String,
+        default: "3-5 business days",
+        trim: true,
+        maxlength: 80,
+      },
+    },
+
     emailVerified: {
   type: Boolean,
   default: false,

@@ -281,6 +281,82 @@
   color: #a63d2e;
 }
 
+.shipping-settings-card {
+  max-width: 760px;
+  margin-top: 24px;
+  border: 1px solid #dce3de;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 28px;
+}
+
+.shipping-settings-form {
+  display: grid;
+  gap: 22px;
+}
+
+.shipping-settings-form__intro h2 {
+  margin: 0;
+  color: #26362e;
+  font-size: 21px;
+}
+
+.shipping-settings-form__intro p {
+  max-width: 620px;
+  color: #68746c;
+  line-height: 1.6;
+}
+
+.shipping-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.shipping-settings-form label {
+  display: grid;
+  gap: 8px;
+  color: #4e5b53;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shipping-settings-form input[type="number"],
+.shipping-settings-form input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #cfd8d1;
+  border-radius: 7px;
+  color: #26362e;
+  font: inherit;
+  padding: 11px 12px;
+}
+
+.shipping-checkbox {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 10px !important;
+  font-weight: 400 !important;
+}
+
+.shipping-checkbox input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: #26362e;
+}
+
+.shipping-checkbox span {
+  display: grid;
+  gap: 4px;
+}
+
+.shipping-checkbox small {
+  color: #7a857d;
+  font-size: 13px;
+}
+
 .profile-menu-wrapper {
   position: relative;
 }

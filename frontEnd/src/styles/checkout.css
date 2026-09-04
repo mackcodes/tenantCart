@@ -1,0 +1,36 @@
+.checkout-shipping-method {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid rgba(36, 52, 45, 0.14);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.checkout-shipping-method legend {
+  padding: 0 6px;
+  color: #24342d;
+  font-weight: 700;
+}
+
+.checkout-shipping-method label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkout-shipping-method input {
+  margin-top: 3px;
+  accent-color: #24342d;
+}
+
+.checkout-shipping-method label span {
+  display: grid;
+  gap: 3px;
+}
+
+.checkout-shipping-method small {
+  color: #68756d;
+}
