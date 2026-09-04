@@ -95,6 +95,11 @@ const sidebarSections = [
         path: "/dashboard/settings/policies",
         icon: "§",
       },
+      {
+        label: "Team",
+        path: "/dashboard/settings/team",
+        icon: "☺",
+      },
     ],
   },
 ];

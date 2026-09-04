@@ -242,6 +242,47 @@
   padding: 11px 12px;
 }
 
+.settings-danger-form select {
+  border: 1px solid #cfd8d1;
+  border-radius: 7px;
+  color: #26362e;
+  font: inherit;
+  padding: 11px 12px;
+}
+
+.settings-table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+}
+
+.settings-table th,
+.settings-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e6ebe7;
+  color: #26362e;
+  font-size: 14px;
+}
+
+.settings-table th {
+  color: #68746c;
+  font-weight: 600;
+}
+
+.settings-audit-log {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.settings-audit-log li {
+  padding: 9px 0;
+  border-bottom: 1px solid #e6ebe7;
+  color: #4e5b53;
+  font-size: 14px;
+}
+
 .button--secondary,
 .button--danger {
   border: 0;

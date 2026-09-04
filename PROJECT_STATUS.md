@@ -1,6 +1,6 @@
 # TenantCart — Project Status
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-05 (team management UI added)_
 
 ## Backend (`backEnd/`) — stable, all routes tested and working
 
@@ -31,7 +31,7 @@ _Last updated: 2026-09-05_
 - No CMS for homepage content, banners, blog, FAQs.
 - No multi-market (currency/tax/language/region) support.
 - No subscription/billing model.
-- Tenant membership/audit-log backend routes exist but have no frontend screens (view members, invite, change roles, remove, view audit history).
+- ~~Tenant membership/audit-log backend routes exist but have no frontend screens~~ — now implemented (see below).
 
 ## Frontend (`frontEnd/`) — builds cleanly
 
@@ -44,20 +44,22 @@ No backend support exists yet for: Customers, Growth, Discounts, Content, Market
 ### Recent flow change
 Registration no longer forces store creation. New users land on `/dashboard` and create a store whenever they want, via a button on the dashboard or in the header.
 
+### Implemented since last update (2026-09-05, this session)
+Team management page (`/dashboard/settings/team`): lists tenant members (name/email/role/status), lets owners/admins invite existing users by email with an assigned role (admin/manager/staff), change a member's role, and suspend/reactivate members (owner row is protected in the UI, matching backend rules). Also renders the tenant audit log (last 100 entries). Invited members now receive an email notification (via the existing `sendEmail` util) when added to a tenant. No backend model changes were needed — this wires up the existing `tenantRoutes.js` member/audit-log endpoints plus one small controller addition (invite email). Added `tenantService.js` functions (`getTenantMembers`, `addTenantMember`, `updateTenantMember`, `getTenantAuditLogs`), new `DashboardTeam.js` page + test suite, sidebar link, and route registration.
+
 ## Testing status
 - Backend: 8 tests passing (`backEnd/tests/`).
-- Frontend: only one test file is actually discovered and run by the CRA test runner — `src/pages/AccountSettings.test.js` (3 tests passing). `frontEnd/tests/App.test.js` lives outside `src/` and is not picked up by default CRA config.
+- Frontend: 2 test suites / 7 tests passing under CRA's default discovery (`src/pages/AccountSettings.test.js`, `src/pages/DashboardTeam.test.js`). `frontEnd/tests/App.test.js` lives outside `src/` and is not picked up by default CRA config.
 - Frontend production build: passing.
 - No coverage yet for: login/verification edge cases, email resend failures, template listing/applied-state, payment settings, product workflows, order workflows, tenant authorization boundaries, storefront/checkout behavior, or the new shipping settings/checkout flow.
 
 ## Known gaps / next candidates
-1. Tenant team management UI (members list, invite, roles, audit log) — backend already exists, frontend does not.
-2. Store policies (refund/privacy/terms/cancellation) — no model, no storefront/checkout display.
-3. Customer management — no model, no list/search/detail/order-history UI.
-4. Discounts/coupons — no model, no checkout validation.
-5. Billing and plans — no subscription model or billing screen.
-6. Payment production-readiness — webhook strategy, refunds, reconciliation.
-7. Expand automated test coverage (frontend especially).
+1. Store policies (refund/privacy/terms/cancellation) — no model, no storefront/checkout display.
+2. Customer management — no model, no list/search/detail/order-history UI.
+3. Discounts/coupons — no model, no checkout validation.
+4. Billing and plans — no subscription model or billing screen.
+5. Payment production-readiness — webhook strategy, refunds, reconciliation.
+6. Expand automated test coverage (frontend especially, including the new team management page).
 
 ## Working branch note
 The shipping feature above (backend model/controller/routes + frontend settings page + checkout integration) is currently on `feature/shipping-and-checkout` and **not yet merged into `main`**.

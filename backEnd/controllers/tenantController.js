@@ -9,6 +9,7 @@ import User from "../models/User.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import { recordTenantAudit } from "../services/tenantAuditService.js";
+import sendEmail from "../utils/sendEmail.js";
 
 const assignableRoles = new Set([
   "admin",
@@ -22,6 +23,42 @@ const canManageMembers = new Set([
 ]);
 
 const getTenantId = (value) => value?._id || value;
+
+const sendMemberInviteEmail = async ({ user, tenant, role }) => {
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+
+  const html = `
+    <!doctype html>
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #24342d;">
+        <h2>You've been added to ${tenant.storeName}</h2>
+
+        <p>Hello ${user.name},</p>
+
+        <p>
+          You now have <strong>${role}</strong> access to
+          <strong>${tenant.storeName}</strong> on TenantCart.
+        </p>
+
+        <p>
+          <a href="${clientUrl}/login">Sign in</a> to get started.
+        </p>
+
+        <p>TenantCart</p>
+      </body>
+    </html>
+  `;
+
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: `You've been added to ${tenant.storeName}`,
+      html,
+    });
+  } catch (emailError) {
+    console.error("Team invite email failed:", emailError);
+  }
+};
 
 const ensureLegacyOwnerMembership = async (user) => {
   const tenantId = getTenantId(user.tenant);
@@ -389,6 +426,12 @@ export const addTenantMember = async (
       metadata: { role },
       request: req,
     });
+
+    const tenant = await Tenant.findById(req.tenantId).select("storeName");
+
+    if (tenant) {
+      await sendMemberInviteEmail({ user, tenant, role });
+    }
 
     return res.status(201).json({
       message: "Tenant member added",
