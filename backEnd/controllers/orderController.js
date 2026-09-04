@@ -22,7 +22,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   const tenant = await Tenant.findOne({
     slug: normalizeSlug(slug),
     status: "approved",
-  }).select("_id storeName slug");
+  }).select("_id storeName slug address shipping");
 
   if (!tenant) {
     return res.status(404).json({
@@ -35,6 +35,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     customerEmail,
     customerPhone,
     shippingAddress,
+    shippingMethod = "delivery",
     items,
   } = req.body;
 
@@ -44,11 +45,24 @@ export const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  if (!["delivery", "pickup"].includes(shippingMethod)) {
+    return res.status(400).json({
+      message: "A valid shipping method is required",
+    });
+  }
+
+  if (shippingMethod === "pickup" && !tenant.shipping?.localPickupEnabled) {
+    return res.status(400).json({
+      message: "Local pickup is not available for this store",
+    });
+  }
+
   if (
-    !shippingAddress?.line1 ||
-    !shippingAddress?.city ||
-    !shippingAddress?.state ||
-    !shippingAddress?.postalCode
+    shippingMethod === "delivery" &&
+    (!shippingAddress?.line1 ||
+      !shippingAddress?.city ||
+      !shippingAddress?.state ||
+      !shippingAddress?.postalCode)
   ) {
     return res.status(400).json({
       message: "Complete shipping address is required",
@@ -137,6 +151,24 @@ export const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  const shippingSettings = tenant.shipping || {};
+  const shippingAmount = shippingMethod === "pickup"
+    ? 0
+    : totalAmount >= Number(shippingSettings.freeShippingThreshold ?? 1000)
+      ? 0
+      : Number(shippingSettings.flatRate ?? 0);
+  const orderTotal = totalAmount + shippingAmount;
+  const resolvedShippingAddress = shippingMethod === "pickup"
+    ? {
+      line1: tenant.address?.line1 || "Store pickup",
+      line2: tenant.address?.line2 || "",
+      city: tenant.address?.city || "",
+      state: tenant.address?.state || "",
+      postalCode: tenant.address?.postalCode || "",
+      country: tenant.address?.country || "India",
+    }
+    : shippingAddress;
+
   const paymentToken = createCheckoutToken();
 
   const order = await Order.create({
@@ -145,15 +177,17 @@ export const createOrder = asyncHandler(async (req, res) => {
     customerEmail: customerEmail.trim().toLowerCase(),
     customerPhone: customerPhone?.trim() || "",
     shippingAddress: {
-      line1: shippingAddress.line1.trim(),
-      line2: shippingAddress.line2?.trim() || "",
-      city: shippingAddress.city.trim(),
-      state: shippingAddress.state.trim(),
-      postalCode: shippingAddress.postalCode.trim(),
-      country: shippingAddress.country?.trim() || "India",
+      line1: resolvedShippingAddress.line1.trim(),
+      line2: resolvedShippingAddress.line2?.trim() || "",
+      city: resolvedShippingAddress.city.trim(),
+      state: resolvedShippingAddress.state.trim(),
+      postalCode: resolvedShippingAddress.postalCode.trim(),
+      country: resolvedShippingAddress.country?.trim() || "India",
     },
     items: orderItems,
-    totalAmount,
+    shippingMethod,
+    shippingAmount,
+    totalAmount: orderTotal,
     status: "pending",
     checkoutTokenHash: hashCheckoutToken(paymentToken),
   });

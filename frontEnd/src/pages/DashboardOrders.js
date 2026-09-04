@@ -264,6 +264,19 @@ const DashboardOrders = () => {
                           </div>
 
                           <div>
+                            <strong>Shipping method</strong>
+
+                            <p>
+                              {order.shippingMethod === "pickup"
+                                ? "Local pickup"
+                                : "Delivery"}
+                              {order.shippingAmount > 0
+                                ? ` · ${formatCurrency(order.shippingAmount)}`
+                                : " · Free"}
+                            </p>
+                          </div>
+
+                          <div>
                             <strong>Items</strong>
 
                             <ul className="order-items-list">
