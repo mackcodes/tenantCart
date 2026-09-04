@@ -1,9 +1,11 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 import User from "../models/User.js";
 import Tenant from "../models/Tenant.js";
+import TenantMembership from "../models/TenantMembership.js";
 
 import sendEmail from "../utils/sendEmail.js";
 import {evaluateTenant} from "../services/tenantVerificationService.js";
@@ -67,8 +69,10 @@ const sendVerificationEmail = async (user) => {
       subject: "Verify your TenantCart email",
       html,
     });
+    return true;
   } catch (emailError) {
     console.error("Verification email failed:", emailError);
+    return false;
   }
 };
 
@@ -115,9 +119,9 @@ export const createAccount = async ({
     passwordHash,
   });
 
-  await sendVerificationEmail(user);
+  const emailSent = await sendVerificationEmail(user);
 
-  return user;
+  return { user, emailSent };
 };
 
 export const verifyEmail = async (rawToken) => {
@@ -162,13 +166,17 @@ export const verifyEmail = async (rawToken) => {
 
   await user.save();
 
-  if (user.tenant) {
+  const ownedTenant = await Tenant.findOne({
+    owner: user._id,
+  }).select("_id");
+
+  if (ownedTenant) {
     await Tenant.updateOne(
-      { _id: user.tenant },
+      { _id: ownedTenant._id },
       { $set: { emailVerified: true } }
     );
 
-    await evaluateTenant(user.tenant);
+    await evaluateTenant(ownedTenant._id);
   }
 
   return { user, alreadyVerified: false };
@@ -185,37 +193,15 @@ export const resendVerificationEmail = async (email) => {
     return;
   }
 
-  await sendVerificationEmail(user);
+  const emailSent = await sendVerificationEmail(user);
+
+  return { emailSent };
 };
 
 export const createStoreForUser = async (
   userId,
   storeData
 ) => {
-  const existingUser = await User.findById(
-    userId
-  );
-
-  if (!existingUser) {
-    throw Object.assign(
-      new Error("User not found"),
-      {
-        statusCode: 404,
-      }
-    );
-  }
-
-  if (existingUser.tenant) {
-    throw Object.assign(
-      new Error(
-        "This account already has a store"
-      ),
-      {
-        statusCode: 409,
-      }
-    );
-  }
-
   const normalizedSlug =
     storeData.slug?.trim().toLowerCase();
 
@@ -224,20 +210,6 @@ export const createStoreForUser = async (
       new Error("Store slug is required"),
       {
         statusCode: 400,
-      }
-    );
-  }
-
-  const existingTenant =
-    await Tenant.findOne({
-      slug: normalizedSlug,
-    });
-
-  if (existingTenant) {
-    throw Object.assign(
-      new Error("Store URL already taken"),
-      {
-        statusCode: 409,
       }
     );
   }
@@ -266,43 +238,109 @@ export const createStoreForUser = async (
     branding: storeData.branding,
   };
 
-  const tenant = await Tenant.create({
-    ...safeStoreData,
-    owner: userId,
-    status: "pending_verification",
-    emailVerified: existingUser.emailVerified === true,
-  });
+  const session = await mongoose.startSession();
+  let tenantId;
 
-  const evaluatedTenant =
-    await evaluateTenant(tenant._id);
+  try {
+    await session.withTransaction(async () => {
+      const existingUser = await User.findById(userId)
+        .session(session);
 
-  const updatedUser =
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        tenant: evaluatedTenant._id,
-      },
-      {
-        new: true,
-        runValidators: true,
+      if (!existingUser) {
+        throw Object.assign(
+          new Error("User not found"),
+          { statusCode: 404 }
+        );
       }
-    )
-      .select("-passwordHash")
-      .populate("tenant");
 
-  if (!updatedUser) {
-    throw Object.assign(
-      new Error("User could not be updated"),
-      {
-        statusCode: 500,
+      const existingTenant = await Tenant.findOne({
+        $or: [
+          { owner: userId },
+          { slug: normalizedSlug },
+        ],
+      }).session(session);
+
+      if (existingTenant) {
+        throw Object.assign(
+          new Error(
+            existingTenant.owner.equals(userId)
+              ? "This account already has a store"
+              : "Store URL already taken"
+          ),
+          { statusCode: 409 }
+        );
       }
-    );
+
+      const [tenant] = await Tenant.create(
+        [{
+          ...safeStoreData,
+          owner: userId,
+          status: "pending_verification",
+          emailVerified: existingUser.emailVerified === true,
+        }],
+        { session }
+      );
+
+      await TenantMembership.create(
+        [{
+          tenant: tenant._id,
+          user: userId,
+          role: "owner",
+          status: "active",
+        }],
+        { session }
+      );
+
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: userId },
+        {
+          tenant: tenant._id,
+          // Accounts created before merchant onboarding was introduced used the
+          // legacy "user" role. Promote them as part of creating their store.
+          role:
+            existingUser.role === "user"
+              ? "merchant"
+              : existingUser.role,
+        },
+        {
+          new: true,
+          runValidators: true,
+          session,
+        }
+      );
+
+      if (!updatedUser) {
+        throw Object.assign(
+          new Error("User could not be updated"),
+          { statusCode: 500 }
+        );
+      }
+
+      tenantId = tenant._id;
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      throw Object.assign(
+        new Error(
+          error.keyPattern?.owner
+            ? "This account already has a store"
+            : "Store URL already taken"
+        ),
+        { statusCode: 409 }
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
   }
 
-  return {
-    tenant: evaluatedTenant,
-    user: updatedUser,
-  };
+  const tenant = await evaluateTenant(tenantId);
+  const user = await User.findById(userId)
+    .select("-passwordHash")
+    .populate("tenant");
+
+  return { tenant, user };
 };
 
 export const validateLogin = async (

@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import { getStorefront } from "../services/storefrontService.js";
+import { getStorefrontTheme } from "../utils/storefrontTheme.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -33,6 +34,7 @@ const Storefront = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cart, setCart] = useState({});
+  const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
     const loadStore = async () => {
@@ -98,6 +100,11 @@ const Storefront = () => {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const theme = getStorefrontTheme(store);
+  const productCategories = [...new Set(products.map((product) => product.category).filter(Boolean))];
+  const visibleProducts = activeCategory === "all"
+    ? products
+    : products.filter((product) => product.category === activeCategory);
 
   if (loading) {
     return (
@@ -118,8 +125,11 @@ const Storefront = () => {
   }
 
   return (
-    <div className="minimal-landing">
-      <header className="site-header">
+    <div
+      className={`minimal-landing storefront-theme storefront-theme--${theme.layout}`}
+      style={theme.style}
+    >
+      <header className={`site-header storefront-site-header storefront-site-header--${theme.components.headerStyle || "centered"}`}>
         <nav className="site-nav">
           <Link to="/" className="site-logo">
             Tenant<span>Cart</span>
@@ -127,21 +137,49 @@ const Storefront = () => {
         </nav>
       </header>
 
+      {theme.components.showBanner && (
+        <p className="storefront-banner">Free shipping on orders over ₹1,000</p>
+      )}
+
       <section className="storefront-header">
         <p className="eyebrow">{store.category}</p>
         <h1>{store.storeName}</h1>
         <p>{store.description}</p>
       </section>
 
+      {theme.components.showCategories && productCategories.length > 0 && (
+        <nav className="storefront-categories" aria-label="Product categories">
+          <button
+            type="button"
+            className={activeCategory === "all" ? "storefront-category storefront-category--active" : "storefront-category"}
+            onClick={() => setActiveCategory("all")}
+          >
+            All products
+          </button>
+          {productCategories.map((productCategory) => (
+            <button
+              key={productCategory}
+              type="button"
+              className={activeCategory === productCategory ? "storefront-category storefront-category--active" : "storefront-category"}
+              onClick={() => setActiveCategory(productCategory)}
+            >
+              {productCategory}
+            </button>
+          ))}
+        </nav>
+      )}
+
       <div className="storefront-layout">
-        {products.length === 0 ? (
+        {visibleProducts.length === 0 ? (
           <p className="storefront-empty">
-            This store hasn't added any products yet.
+            {products.length === 0 ? "This store hasn't added any products yet." : "No products in this category yet."}
           </p>
         ) : (
-          <div className="storefront-grid">
-            {products.map((product) => (
-              <div key={product._id} className="storefront-card">
+          <section className="storefront-products-section">
+            {theme.components.showFeaturedProducts && <h2 className="storefront-products-heading">Featured products</h2>}
+            <div className="storefront-grid">
+            {visibleProducts.map((product) => (
+              <div key={product._id} className={`storefront-card storefront-card--${theme.productCardStyle}`}>
                 {product.images?.[0] ? (
                   <img
                     src={product.images[0]}
@@ -172,6 +210,7 @@ const Storefront = () => {
               </div>
             ))}
           </div>
+          </section>
         )}
 
         <aside className="storefront-cart">

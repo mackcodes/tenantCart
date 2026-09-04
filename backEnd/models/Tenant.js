@@ -112,10 +112,26 @@ const tenantSchema = new mongoose.Schema(
         type: String,
         default: "default",
       },
+
+      template: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Template",
+        default: null,
+      },
+
+      customConfig: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+      },
     },
 
     razorpay: {
-      accountId: {
+      keyId: {
+        type: String,
+        default: null,
+      },
+
+      keySecret: {
         type: String,
         default: null,
       },
@@ -214,5 +230,9 @@ verification: {
     timestamps: true,
   }
 );
+
+// The current product supports one owned store per merchant. Memberships allow
+// additional users to work in a tenant without becoming its owner.
+tenantSchema.index({ owner: 1 }, { unique: true });
 
 export default mongoose.model("Tenant", tenantSchema);

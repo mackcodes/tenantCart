@@ -1,3 +1,39 @@
+.storefront-theme {
+  min-height: 100vh;
+  background: var(--store-background);
+  color: var(--store-text);
+  font-family: var(--store-body-font);
+}
+
+.storefront-site-header {
+  background: var(--store-background);
+}
+
+.storefront-site-header--left-aligned .site-nav {
+  justify-content: flex-start;
+}
+
+.storefront-site-header--overlay {
+  background: var(--store-primary);
+}
+
+.storefront-site-header--overlay .site-logo,
+.storefront-site-header--overlay .site-logo span {
+  color: var(--store-background);
+}
+
+.storefront-banner {
+  margin: 0;
+  background: var(--store-primary);
+  color: var(--store-background);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 10px 28px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .storefront-header {
   width: min(1180px, calc(100% - 56px));
   margin: 0 auto;
@@ -6,14 +42,43 @@
 
 .storefront-header h1 {
   margin: 10px 0 6px;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--store-primary);
+  font-family: var(--store-heading-font);
   font-size: clamp(36px, 5vw, 52px);
   letter-spacing: -2px;
 }
 
 .storefront-header p {
   max-width: 560px;
-  color: var(--muted-ink);
+  color: var(--store-secondary);
+}
+
+.storefront-categories {
+  display: flex;
+  width: min(1180px, calc(100% - 56px));
+  gap: 8px;
+  margin: 14px auto 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.storefront-category {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--store-primary) 25%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--store-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  text-transform: capitalize;
+}
+
+.storefront-category--active,
+.storefront-category:hover {
+  background: var(--store-primary);
+  color: var(--store-background);
 }
 
 .storefront-layout {
@@ -32,10 +97,49 @@
   gap: 24px;
 }
 
+.storefront-theme--list .storefront-grid {
+  grid-template-columns: 1fr;
+}
+
+.storefront-theme--list .storefront-card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+}
+
+.storefront-theme--featured-first .storefront-card:first-child {
+  grid-column: 1 / -1;
+}
+
+.storefront-theme--featured-first .storefront-card:first-child .storefront-card__image,
+.storefront-theme--featured-first .storefront-card:first-child .storefront-card__placeholder {
+  height: 280px;
+}
+
+.storefront-theme--masonry .storefront-grid {
+  column-count: 2;
+  display: block;
+}
+
+.storefront-theme--masonry .storefront-card {
+  break-inside: avoid;
+  margin-bottom: 24px;
+}
+
+.storefront-products-section {
+  min-width: 0;
+}
+
+.storefront-products-heading {
+  margin: 0 0 16px;
+  color: var(--store-primary);
+  font-family: var(--store-heading-font);
+  font-size: 22px;
+}
+
 .storefront-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--white);
+  background: var(--store-background);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -53,8 +157,8 @@
   height: 180px;
   display: grid;
   place-items: center;
-  background: var(--sage);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--store-accent) 18%, var(--store-background));
+  color: var(--store-primary);
   font-size: 30px;
   font-weight: 700;
 }
@@ -69,12 +173,27 @@
 
 .storefront-card__body h3 {
   margin: 0;
+  color: var(--store-primary);
+  font-family: var(--store-heading-font);
   font-size: 16px;
 }
 
 .storefront-card__price {
-  color: var(--ink);
+  color: var(--store-text);
   font-weight: 700;
+}
+
+.storefront-card--simple {
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.storefront-card--minimal {
+  border-color: transparent;
+}
+
+.storefront-card--bordered {
+  border: 2px solid var(--store-primary);
 }
 
 .storefront-cart {
@@ -82,7 +201,7 @@
   top: 24px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--white);
+  background: var(--store-background);
   padding: 20px;
 }
 
@@ -122,6 +241,16 @@
   width: min(760px, calc(100% - 56px));
   margin: 0 auto;
   padding: 48px 0 100px;
+}
+
+@media (max-width: 700px) {
+  .storefront-theme--list .storefront-card {
+    grid-template-columns: 1fr;
+  }
+
+  .storefront-theme--masonry .storefront-grid {
+    column-count: 1;
+  }
 }
 
 .checkout-wrapper h1 {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getMyStorefrontPreview } from "../services/storefrontService.js";
+import { getStorefrontTheme } from "../utils/storefrontTheme.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -57,13 +58,22 @@ const StorePreview = () => {
     );
   }
 
+  const theme = getStorefrontTheme(store);
+
   return (
-    <div className="minimal-landing">
+    <div
+      className={`minimal-landing storefront-theme storefront-theme--${theme.layout}`}
+      style={theme.style}
+    >
       {store.status !== "approved" && (
         <p className="form-message form-message--error" style={{ margin: "24px auto 0", width: "min(1180px, calc(100% - 56px))" }}>
           This is a preview only — your store isn't approved yet, so customers
           can't see it or place orders until an admin approves it.
         </p>
+      )}
+
+      {theme.components.showBanner && (
+        <p className="storefront-banner">Free shipping on orders over ₹1,000</p>
       )}
 
       <section className="storefront-header">
@@ -78,9 +88,11 @@ const StorePreview = () => {
             You haven't added any products yet.
           </p>
         ) : (
-          <div className="storefront-grid">
+          <section className="storefront-products-section">
+            {theme.components.showFeaturedProducts && <h2 className="storefront-products-heading">Featured products</h2>}
+            <div className="storefront-grid">
             {products.map((product) => (
-              <div key={product._id} className="storefront-card">
+              <div key={product._id} className={`storefront-card storefront-card--${theme.productCardStyle}`}>
                 {product.images?.[0] ? (
                   <img
                     src={product.images[0]}
@@ -102,6 +114,7 @@ const StorePreview = () => {
               </div>
             ))}
           </div>
+          </section>
         )}
       </div>
     </div>

@@ -16,6 +16,8 @@ const DashboardHeader = () => {
   const {
     user,
     logout,
+    tenants,
+    switchTenant,
   } = useAuth();
 
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ const DashboardHeader = () => {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const isAdmin = user?.role === "admin";
 
   const handleLogout = async () => {
     try {
@@ -50,23 +53,49 @@ const DashboardHeader = () => {
     }
   };
 
+  const handleTenantChange = async (event) => {
+    try {
+      await switchTenant(event.target.value);
+      navigate("/dashboard");
+    } catch (error) {
+      // The active tenant remains unchanged if the server rejects the switch.
+    }
+  };
+
   return (
     <header className="dashboard-header">
       <Link
-        to="/dashboard"
+        to={isAdmin ? "/dashboard/admin/tenants" : "/dashboard"}
         className="mobile-dashboard-logo"
       >
         Tenant<span>Cart</span>
       </Link>
 
-      {storeName && (
+      {storeName && !isAdmin && (
         <p className="dashboard-header-store-name">
           {storeName}
         </p>
       )}
 
       <div className="dashboard-header-actions">
-        {user?.tenant ? (
+        {!isAdmin && tenants.length > 1 && (
+          <label className="header-tenant-switcher">
+            <span className="sr-only">Current store</span>
+            <select
+              value={user?.tenant?._id || ""}
+              onChange={handleTenantChange}
+              aria-label="Switch store"
+            >
+              {tenants.map(({ tenant }) => (
+                <option key={tenant._id} value={tenant._id}>
+                  {tenant.storeName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {!isAdmin && (user?.tenant ? (
           <Link
             to="/store-preview"
             className="header-store-link"
@@ -80,15 +109,7 @@ const DashboardHeader = () => {
           >
             + Create store
           </Link>
-        )}
-
-        <button
-          type="button"
-          className="header-icon-button"
-          aria-label="Notifications"
-        >
-          ♧
-        </button>
+        ))}
 
         <div className="profile-menu-wrapper">
           <button
@@ -133,51 +154,29 @@ const DashboardHeader = () => {
                 </small>
               </div>
 
-              <Link
-                to="/dashboard/profile"
-                className="profile-menu__item"
-                role="menuitem"
-                onClick={() =>
-                  setProfileOpen(false)
-                }
-              >
-                Profile
-              </Link>
+              {!isAdmin && (
+                <>
+                  <Link
+                    to="/dashboard/profile"
+                    className="profile-menu__item"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Profile
+                  </Link>
 
-              <Link
-                to="/dashboard/settings/billing"
-                className="profile-menu__item"
-                role="menuitem"
-                onClick={() =>
-                  setProfileOpen(false)
-                }
-              >
-                Billing and plan
-              </Link>
+                  <Link
+                    to="/dashboard/settings/account"
+                    className="profile-menu__item"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Account settings
+                  </Link>
 
-              <Link
-                to="/dashboard/settings/account"
-                className="profile-menu__item"
-                role="menuitem"
-                onClick={() =>
-                  setProfileOpen(false)
-                }
-              >
-                Account settings
-              </Link>
-
-              <Link
-                to="/help"
-                className="profile-menu__item"
-                role="menuitem"
-                onClick={() =>
-                  setProfileOpen(false)
-                }
-              >
-                Help center
-              </Link>
-
-              <div className="profile-menu__divider" />
+                  <div className="profile-menu__divider" />
+                </>
+              )}
 
               <button
                 type="button"

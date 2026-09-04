@@ -39,7 +39,7 @@ export const registerAccount = async (
       });
     }
 
-    const user = await authService.createAccount({
+    const { user, emailSent } = await authService.createAccount({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
@@ -57,7 +57,12 @@ export const registerAccount = async (
         email: user.email,
         role: user.role,
         tenant: user.tenant,
+        emailVerified: user.emailVerified,
       },
+      emailSent,
+      emailMessage: emailSent
+        ? "Verification email sent"
+        : "Account created, but the verification email could not be sent. Use resend verification after checking your email settings.",
     });
   } catch (error) {
     next(error);
@@ -181,6 +186,7 @@ export const login = async (
         email: user.email,
         role: user.role,
         tenant: user.tenant,
+        emailVerified: user.emailVerified,
       },
     });
   } catch (error) {
@@ -326,13 +332,15 @@ export const resendVerificationEmail = async (
       });
     }
 
-    await authService.resendVerificationEmail(
+    const { emailSent } = await authService.resendVerificationEmail(
       email.trim().toLowerCase()
     );
 
     return res.json({
-      message:
-        "If that account needs verification, an email has been sent.",
+      message: emailSent
+        ? "Verification email sent. Check your inbox."
+        : "That account is already verified or the verification email could not be sent.",
+      emailSent,
     });
   } catch (error) {
     next(error);

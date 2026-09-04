@@ -609,4 +609,153 @@
   padding: 12px 28px;
 }
 
+/* ─── Payment Settings ─────────────────────────────────────────── */
 
+.payment-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 780px;
+}
+
+.payment-status-card,
+.payment-credentials-card,
+.payment-info-box {
+  border: 1px solid #dce3de;
+  border-radius: 13px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.payment-status-card__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.payment-provider-logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #1a54aa;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.payment-status-card__header > div {
+  flex: 1;
+}
+
+.payment-status-card__header strong {
+  display: block;
+  color: #24342d;
+  font-size: 15px;
+}
+
+.payment-status-card__header p {
+  margin: 4px 0 0;
+  color: #66736d;
+  font-size: 13px;
+}
+
+.payment-status-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+
+.payment-status-badge--active {
+  background: #e6f5ea;
+  color: #1a7c34;
+}
+
+.payment-status-badge--inactive {
+  background: #f1f4f1;
+  color: #6e7a71;
+}
+
+.payment-credentials-card h2 {
+  margin: 0 0 8px;
+  color: #24342d;
+  font-size: 18px;
+}
+
+.payment-credentials-hint {
+  margin: 0 0 20px;
+  color: #66736d;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.payment-credentials-hint a {
+  color: #1a54aa;
+  text-decoration: underline;
+}
+
+.payment-credentials-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payment-field span {
+  color: #374840;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.payment-field__saved-note {
+  color: #66736d;
+  font-weight: 400;
+}
+
+.payment-field input {
+  border: 1px solid #d0d9d3;
+  border-radius: 8px;
+  color: #24342d;
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 13px;
+  transition: border-color 160ms ease;
+}
+
+.payment-field input:focus {
+  border-color: #26362e;
+  outline: none;
+}
+
+.payment-form-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.payment-info-box {
+  background: #f8faf8;
+}
+
+.payment-info-box h3 {
+  margin: 0 0 12px;
+  color: #24342d;
+  font-size: 15px;
+}
+
+.payment-info-box ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #4e5b53;
+  font-size: 14px;
+  line-height: 1.7;
+}

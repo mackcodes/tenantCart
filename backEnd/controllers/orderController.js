@@ -1,9 +1,20 @@
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import Tenant from "../models/Tenant.js";
+import crypto from "node:crypto";
 import asyncHandler from "../utils/asyncHandler.js";
+import { recordTenantAudit } from "../services/tenantAuditService.js";
 
 const normalizeSlug = (value) => value?.trim().toLowerCase();
+
+const createCheckoutToken = () => crypto
+  .randomBytes(32)
+  .toString("hex");
+
+const hashCheckoutToken = (token) => crypto
+  .createHash("sha256")
+  .update(token)
+  .digest("hex");
 
 export const createOrder = asyncHandler(async (req, res) => {
   const { slug } = req.params;
@@ -126,6 +137,8 @@ export const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  const paymentToken = createCheckoutToken();
+
   const order = await Order.create({
     tenant: tenant._id,
     customerName: customerName.trim(),
@@ -142,16 +155,23 @@ export const createOrder = asyncHandler(async (req, res) => {
     items: orderItems,
     totalAmount,
     status: "pending",
+    checkoutTokenHash: hashCheckoutToken(paymentToken),
   });
+
+  const orderResponse = order.toObject();
+  delete orderResponse.checkoutTokenHash;
 
   return res.status(201).json({
     message: "Order placed successfully",
-    order,
+    order: orderResponse,
+    // This one-time capability is required to begin or verify payment for
+    // this guest checkout. The database only stores its hash.
+    paymentToken,
   });
 });
 
 export const getMerchantOrders = asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId || req.user.tenant?._id;
+  const tenantId = req.tenantId;
 
   if (!tenantId) {
     return res.status(400).json({
@@ -172,7 +192,7 @@ export const getMerchantOrders = asyncHandler(async (req, res) => {
 });
 
 export const getOrderById = asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId || req.user.tenant?._id;
+  const tenantId = req.tenantId;
 
   const order = await Order.findOne({
     _id: req.params.id,
@@ -187,7 +207,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 });
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId || req.user.tenant?._id;
+  const tenantId = req.tenantId;
 
   const { status } = req.body;
 
@@ -226,6 +246,16 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   }
 
   await order.save();
+
+  await recordTenantAudit({
+    tenantId,
+    actorId: req.user._id,
+    action: "order.status.updated",
+    targetType: "order",
+    targetId: order._id,
+    metadata: { status: order.status },
+    request: req,
+  });
 
   return res.json({
     message: "Order updated successfully",
