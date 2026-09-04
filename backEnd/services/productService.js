@@ -2,7 +2,7 @@ import Product from "../models/Product.js";
 
 export const listByTenant = async (tenantId) => {
   return Product.find({
-    tenant: tenantId,
+    tenantId,
   }).sort({
     createdAt: -1,
   });
@@ -11,7 +11,7 @@ export const listByTenant = async (tenantId) => {
 export const create = async (tenantId, data) => {
   return Product.create({
     ...data,
-    tenant: tenantId,
+    tenantId,
   });
 };
 
@@ -23,7 +23,7 @@ export const update = async (
   return Product.findOneAndUpdate(
     {
       _id: productId,
-      tenant: tenantId,
+      tenantId,
     },
     data,
     {
@@ -39,6 +39,6 @@ export const remove = async (
 ) => {
   return Product.findOneAndDelete({
     _id: productId,
-    tenant: tenantId,
+      tenantId,
   });
 };

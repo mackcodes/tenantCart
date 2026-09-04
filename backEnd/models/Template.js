@@ -114,11 +114,20 @@ const templateSchema = new mongoose.Schema({
     ref: 'User',
   },
 
+  tenant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    default: null,
+    index: true,
+  },
+
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
+
+templateSchema.index({ tenant: 1, createdBy: 1 });
 
 const Template = mongoose.model('Template', templateSchema);
 

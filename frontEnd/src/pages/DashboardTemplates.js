@@ -88,6 +88,14 @@ const DashboardTemplates = () => {
       setError("");
       setNotice("");
       await applyTemplate(selectedTemplate._id);
+      setTemplates((currentTemplates) => currentTemplates.map((template) => ({
+        ...template,
+        isApplied: String(template._id) === String(selectedTemplate._id),
+      })));
+      setSelectedTemplate((currentTemplate) => ({
+        ...currentTemplate,
+        isApplied: true,
+      }));
       setNotice(`${selectedTemplate.displayName || "Template"} is now applied to your store.`);
     } catch (requestError) {
       setError(requestError.message || "Unable to apply this template");
@@ -225,7 +233,17 @@ const DashboardTemplates = () => {
                   <div className="preview-hero">
                     <span>New season</span>
                     <h2>Objects with a point of view.</h2>
-                    <button type="button" onClick={handleApply} disabled={applying}>Apply this style</button>
+                    <button
+                      type="button"
+                      onClick={handleApply}
+                      disabled={applying || selectedTemplate.isApplied}
+                    >
+                      {selectedTemplate.isApplied
+                        ? "Already applied"
+                        : applying
+                          ? "Applying..."
+                          : "Apply this style"}
+                    </button>
                   </div>
                   <div className="preview-products"><span /><span /><span /></div>
                 </div>
@@ -240,8 +258,17 @@ const DashboardTemplates = () => {
                     <span><small>Heading</small><strong>{config?.fonts?.heading || "Inter"}</strong></span>
                     <span><small>Accent</small><strong>{config?.colors?.accent || "Default"}</strong></span>
                   </div>
-                  <button type="button" className="button button--primary template-apply-button" onClick={handleApply} disabled={applying}>
-                    {applying ? "Applying..." : "Apply to storefront"}
+                  <button
+                    type="button"
+                    className="button button--primary template-apply-button"
+                    onClick={handleApply}
+                    disabled={applying || selectedTemplate.isApplied}
+                  >
+                    {selectedTemplate.isApplied
+                      ? "Already applied"
+                      : applying
+                        ? "Applying..."
+                        : "Apply to storefront"}
                   </button>
                   <Link to="/store-preview" className="template-preview-link">Open storefront preview</Link>
                 </div>

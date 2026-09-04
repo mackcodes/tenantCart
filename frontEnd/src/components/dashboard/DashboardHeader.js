@@ -16,6 +16,8 @@ const DashboardHeader = () => {
   const {
     user,
     logout,
+    tenants,
+    switchTenant,
   } = useAuth();
 
   const navigate = useNavigate();
@@ -51,6 +53,15 @@ const DashboardHeader = () => {
     }
   };
 
+  const handleTenantChange = async (event) => {
+    try {
+      await switchTenant(event.target.value);
+      navigate("/dashboard");
+    } catch (error) {
+      // The active tenant remains unchanged if the server rejects the switch.
+    }
+  };
+
   return (
     <header className="dashboard-header">
       <Link
@@ -67,6 +78,23 @@ const DashboardHeader = () => {
       )}
 
       <div className="dashboard-header-actions">
+        {!isAdmin && tenants.length > 1 && (
+          <label className="header-tenant-switcher">
+            <span className="sr-only">Current store</span>
+            <select
+              value={user?.tenant?._id || ""}
+              onChange={handleTenantChange}
+              aria-label="Switch store"
+            >
+              {tenants.map(({ tenant }) => (
+                <option key={tenant._id} value={tenant._id}>
+                  {tenant.storeName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         {!isAdmin && (user?.tenant ? (
           <Link
             to="/store-preview"

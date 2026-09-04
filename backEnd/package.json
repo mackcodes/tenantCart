@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "nodemon",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "migrate:tenant-memberships": "node scripts/migrateTenantMemberships.js"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
@@ -21,6 +22,7 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
     "openai": "^7.9.0",
+    "razorpay": "^2.9.8",
     "slugify": "^1.6.9"
   },
   "devDependencies": {
