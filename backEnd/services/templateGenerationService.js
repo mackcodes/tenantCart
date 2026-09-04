@@ -34,7 +34,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no expla
     "showBanner": true/false,
     "showCategories": true/false,
     "showFeaturedProducts": true/false,
-    "showNewsletter": true/false,
     "productCardStyle": "simple" | "card" | "minimal" | "bordered",
     "headerStyle": "centered" | "left-aligned" | "overlay"
   }
@@ -125,7 +124,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no expla
     "showBanner": true/false,
     "showCategories": true/false,
     "showFeaturedProducts": true/false,
-    "showNewsletter": true/false,
     "productCardStyle": "simple" | "card" | "minimal" | "bordered",
     "headerStyle": "centered" | "left-aligned" | "overlay"
   }
@@ -234,7 +232,6 @@ const getFallbackTemplate = (category) => {
         showBanner: false,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: false,
         productCardStyle: 'simple',
         headerStyle: 'centered',
       },
@@ -260,7 +257,6 @@ const getFallbackTemplate = (category) => {
         showBanner: true,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: false,
         productCardStyle: 'card',
         headerStyle: 'overlay',
       },
@@ -286,7 +282,6 @@ const getFallbackTemplate = (category) => {
         showBanner: true,
         showCategories: false,
         showFeaturedProducts: true,
-        showNewsletter: true,
         productCardStyle: 'minimal',
         headerStyle: 'left-aligned',
       },

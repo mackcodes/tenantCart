@@ -142,6 +142,16 @@ const RecoveryRoute = ({ children }) => {
   return children;
 };
 
+const DashboardHome = () => {
+  const { user } = useAuth();
+
+  if (user?.role === "admin") {
+    return <Navigate to="/dashboard/admin/tenants" replace />;
+  }
+
+  return <Dashboard />;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -232,7 +242,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardHome />
           </ProtectedRoute>
         }
       />

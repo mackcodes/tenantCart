@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'node:crypto';
 
 import { protect } from '../middlewares/authMiddleware.js';
 import requireMerchant from '../middlewares/merchantMiddleware.js';
@@ -8,17 +9,74 @@ import asyncHandler from '../utils/asyncHandler.js';
 import { generateTemplateWithAI } from '../services/templateGenerationService.js';
 
 const router = express.Router();
+const GENERATION_LIMIT = 3;
+const GENERATION_SESSION_COOKIE = 'tenantcart_template_generation_session';
+const TEMPLATE_CATEGORIES = new Set([
+  'minimal',
+  'bold',
+  'elegant',
+  'playful',
+  'corporate',
+  'custom',
+]);
+const generationSessions = new Map();
 
-// List all available templates (public)
+const getGenerationSession = (req, res) => {
+  let sessionId = req.cookies?.[GENERATION_SESSION_COOKIE];
+
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    res.cookie(GENERATION_SESSION_COOKIE, sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/api/v1/templates',
+    });
+  }
+
+  const userId = String(req.user._id);
+  const existingSession = generationSessions.get(sessionId);
+  const session = existingSession?.userId === userId
+    ? existingSession
+    : { userId, count: 0 };
+
+  generationSessions.set(sessionId, session);
+  return session;
+};
+
+const getGenerationUsage = (session) => ({
+  limit: GENERATION_LIMIT,
+  used: session.count,
+  remaining: Math.max(GENERATION_LIMIT - session.count, 0),
+});
+
+// List prebuilt templates and the authenticated merchant's AI templates.
 router.get(
   '/',
+  protect,
+  requireMerchant,
   asyncHandler(async (req, res) => {
-    const templates = await Template.find({})
+    const templates = await Template.find({
+      $or: [
+        { isAIGenerated: false },
+        { createdBy: req.user._id },
+      ],
+    })
       .select('-__v')
       .sort({ category: 1, name: 1 });
 
     res.json(templates);
   })
+);
+
+router.get(
+  '/generation-limit',
+  protect,
+  requireMerchant,
+  (req, res) => {
+    const session = getGenerationSession(req, res);
+    res.json(getGenerationUsage(session));
+  }
 );
 
 // Get single template details (public)
@@ -61,13 +119,10 @@ router.post(
       });
     }
 
-    // Merge template config into tenant branding
+    // Applying a template replaces the prior template configuration.
     tenant.branding.template = template._id;
-
-    tenant.branding.customConfig = {
-      ...template.config,
-      ...tenant.branding.customConfig,
-    };
+    tenant.branding.templateId = template.name;
+    tenant.branding.customConfig = template.config.toObject();
 
     // Also apply colors to branding for backward compatibility
     if (template.config.colors) {
@@ -102,9 +157,22 @@ router.post(
       });
     }
 
+    const templateCategory = TEMPLATE_CATEGORIES.has(category)
+      ? category
+      : 'custom';
+
+    const session = getGenerationSession(req, res);
+
+    if (session.count >= GENERATION_LIMIT) {
+      return res.status(429).json({
+        error: `You can generate up to ${GENERATION_LIMIT} templates per session.`,
+        generation: getGenerationUsage(session),
+      });
+    }
+
     const generatedConfig = await generateTemplateWithAI(
       description,
-      category
+      templateCategory
     );
 
     // Save the generated template for reuse
@@ -112,15 +180,18 @@ router.post(
       name: `ai-${Date.now()}`,
       displayName: 'AI Generated Template',
       description,
-      category: category || 'custom',
+      category: templateCategory,
       isAIGenerated: true,
       config: generatedConfig,
       createdBy: req.user._id,
     });
 
+    session.count += 1;
+
     res.json({
       message: 'Template generated successfully',
       template,
+      generation: getGenerationUsage(session),
     });
   })
 );

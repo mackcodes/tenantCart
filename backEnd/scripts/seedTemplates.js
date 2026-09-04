@@ -32,7 +32,6 @@ const templates = [
         showBanner: false,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: false,
         productCardStyle: 'simple',
         headerStyle: 'centered',
       },
@@ -65,7 +64,6 @@ const templates = [
         showBanner: true,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: false,
         productCardStyle: 'card',
         headerStyle: 'overlay',
       },
@@ -98,7 +96,6 @@ const templates = [
         showBanner: true,
         showCategories: false,
         showFeaturedProducts: true,
-        showNewsletter: true,
         productCardStyle: 'minimal',
         headerStyle: 'left-aligned',
       },
@@ -131,7 +128,6 @@ const templates = [
         showBanner: true,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: false,
         productCardStyle: 'bordered',
         headerStyle: 'centered',
       },
@@ -164,7 +160,6 @@ const templates = [
         showBanner: false,
         showCategories: true,
         showFeaturedProducts: true,
-        showNewsletter: true,
         productCardStyle: 'card',
         headerStyle: 'left-aligned',
       },
@@ -180,11 +175,16 @@ const seedTemplates = async () => {
 
     console.log('MongoDB connected');
 
-    await Template.deleteMany({});
-    console.log('Existing templates deleted');
-
-    await Template.insertMany(templates);
-    console.log('✅ Templates seeded successfully');
+    await Template.bulkWrite(
+      templates.map((template) => ({
+        updateOne: {
+          filter: { name: template.name },
+          update: { $set: template },
+          upsert: true,
+        },
+      }))
+    );
+    console.log('Prebuilt templates are ready');
 
     await mongoose.connection.close();
     process.exit(0);
