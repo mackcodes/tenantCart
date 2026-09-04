@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import { checkout } from "../services/orderService.js";
+import { initiatePayment, verifyPayment } from "../services/paymentService.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -35,6 +36,23 @@ const formatCurrency = (amount) => {
     maximumFractionDigits: 2,
   }).format(amount || 0);
 };
+
+/**
+ * Dynamically load the Razorpay checkout script once per page load.
+ * Returns a promise that resolves when the script is ready.
+ */
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
 const Checkout = () => {
   const { slug } = useParams();
@@ -85,7 +103,8 @@ const Checkout = () => {
       setSubmitting(true);
       setError("");
 
-      const data = await checkout(slug, {
+      // Step 1 — Create the order in our database (status: pending)
+      const orderData = await checkout(slug, {
         customerName: form.customerName,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,
@@ -103,12 +122,85 @@ const Checkout = () => {
         })),
       });
 
-      setOrderPlaced(data.order);
-      sessionStorage.removeItem(getCartKey(slug));
-      setCart({});
+      const order = orderData.order;
+      const paymentToken = orderData.paymentToken;
+
+      // Step 2 — Get a Razorpay order from the backend
+      const paymentData = await initiatePayment(
+        order._id,
+        paymentToken
+      );
+
+      // Step 3 — Load Razorpay JS SDK and open the payment modal
+      const scriptLoaded = await loadRazorpayScript();
+
+      if (!scriptLoaded) {
+        setError(
+          "Unable to load the payment gateway. Please check your internet connection and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      const razorpayOptions = {
+        key: paymentData.keyId,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        name: document.title || "TenantCart",
+        description: `Order #${order._id}`,
+        order_id: paymentData.razorpayOrderId,
+        prefill: {
+          name: form.customerName,
+          email: form.customerEmail,
+          contact: form.customerPhone,
+        },
+        theme: {
+          color: "#26362e",
+        },
+
+        // Step 4 — Verify payment on our backend after success
+        handler: async (response) => {
+          try {
+            await verifyPayment({
+              orderId: order._id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              paymentToken,
+            });
+
+            // Clear the cart and show the confirmation screen
+            sessionStorage.removeItem(getCartKey(slug));
+            setCart({});
+            setOrderPlaced({ ...order, status: "paid" });
+          } catch (verifyError) {
+            setError(
+              verifyError.message ||
+                "Payment received but verification failed. Please contact support with your order ID: " +
+                  order._id
+            );
+          } finally {
+            setSubmitting(false);
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            // User closed the modal without paying — order stays pending
+            setError(
+              "Payment was not completed. Your order is saved — you can try again or contact the store."
+            );
+            setSubmitting(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(razorpayOptions);
+      rzp.open();
+
+      // Note: setSubmitting(false) happens inside handler / ondismiss
     } catch (requestError) {
       setError(requestError.message || "Unable to place order");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -120,8 +212,8 @@ const Checkout = () => {
           <p className="eyebrow">Order confirmed</p>
           <h1>Thank you, {orderPlaced.customerName}!</h1>
           <p>
-            Your order total was {formatCurrency(orderPlaced.totalAmount)}.
-            A confirmation was sent to {orderPlaced.customerEmail}.
+            Your payment of {formatCurrency(orderPlaced.totalAmount)} was
+            successful. A confirmation was sent to {orderPlaced.customerEmail}.
           </p>
 
           <Link to={`/store/${slug}`} className="dark-button">
@@ -272,7 +364,7 @@ const Checkout = () => {
               className="dark-button large-button"
               disabled={submitting || cartItems.length === 0}
             >
-              {submitting ? "Placing order..." : "Place order"}
+              {submitting ? "Opening payment…" : "Pay with Razorpay"}
             </button>
           </label>
         </form>

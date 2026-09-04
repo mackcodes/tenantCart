@@ -6,6 +6,10 @@ import React, {
 } from "react";
 
 import api from "../services/api.js";
+import {
+  getMyTenants,
+  setCurrentTenant,
+} from "../services/tenantService.js";
 
 const AuthContext =
   createContext(null);
@@ -23,14 +27,36 @@ export const AuthProvider = ({
     setLoading,
   ] = useState(true);
 
+  const [
+    tenants,
+    setTenants,
+  ] = useState([]);
+
   const loadUser = async () => {
     try {
       const data =
         await api("/auth/me");
 
       setUser(data.user);
+
+      if (data.user.role !== "admin") {
+        const tenantData = await getMyTenants();
+        setTenants(tenantData.tenants || []);
+        const activeTenant = (tenantData.tenants || []).find(
+          ({ tenant }) => String(tenant._id) === String(
+            tenantData.currentTenantId || ""
+          )
+        )?.tenant || null;
+        setUser((currentUser) => ({
+          ...currentUser,
+          tenant: activeTenant,
+        }));
+      } else {
+        setTenants([]);
+      }
     } catch (error) {
       setUser(null);
+      setTenants([]);
     } finally {
       setLoading(false);
     }
@@ -57,6 +83,32 @@ export const AuthProvider = ({
 
     setUser(data.user);
 
+    if (data.user.role !== "admin") {
+      const tenantData = await getMyTenants();
+      setTenants(tenantData.tenants || []);
+      const activeTenant = (tenantData.tenants || []).find(
+        ({ tenant }) => String(tenant._id) === String(
+          tenantData.currentTenantId || ""
+        )
+      )?.tenant || null;
+      setUser((currentUser) => ({
+        ...currentUser,
+        tenant: activeTenant,
+      }));
+    }
+
+    return data;
+  };
+
+  const switchTenant = async (tenantId) => {
+    const data = await setCurrentTenant(tenantId);
+    setUser(data.user);
+    setTenants((currentTenants) => currentTenants.map((entry) => ({
+      ...entry,
+      tenant: String(entry.tenant._id) === String(tenantId)
+        ? data.tenant
+        : entry.tenant,
+    })));
     return data;
   };
 
@@ -68,8 +120,9 @@ export const AuthProvider = ({
           method: "POST",
         }
       );
-    } finally {
-      setUser(null);
+      } finally {
+        setUser(null);
+        setTenants([]);
     }
   };
 
@@ -82,6 +135,8 @@ export const AuthProvider = ({
         logout,
         setUser,
         refreshUser: loadUser,
+        tenants,
+        switchTenant,
       }}
     >
       {children}

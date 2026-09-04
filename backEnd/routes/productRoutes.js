@@ -8,14 +8,19 @@ import {
   deleteProduct,
 } from "../controllers/productController.js";
 import {protect} from "../middlewares/authMiddleware.js";
+import {
+  requireTenant,
+  requireTenantRole,
+} from "../middlewares/tenantMiddleware.js";
 import { uploadProductImage as uploadImageFile } from "../middlewares/productImageUpload.js";
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, requireTenant);
 
 router.post(
   "/upload",
+  requireTenantRole("owner", "admin", "manager"),
   (req, res, next) => {
     uploadImageFile(req, res, (error) => {
       if (error) {
@@ -30,14 +35,34 @@ router.post(
   uploadProductImage
 );
 
-router.post("/", createProduct);
+router.post(
+  "/",
+  requireTenantRole("owner", "admin", "manager"),
+  createProduct
+);
 
-router.get("/", getMerchantProducts);
+router.get(
+  "/",
+  requireTenantRole("owner", "admin", "manager", "staff"),
+  getMerchantProducts
+);
 
-router.get("/:id", getProductById);
+router.get(
+  "/:id",
+  requireTenantRole("owner", "admin", "manager", "staff"),
+  getProductById
+);
 
-router.patch("/:id", updateProduct);
+router.patch(
+  "/:id",
+  requireTenantRole("owner", "admin", "manager"),
+  updateProduct
+);
 
-router.delete("/:id", deleteProduct);
+router.delete(
+  "/:id",
+  requireTenantRole("owner", "admin", "manager"),
+  deleteProduct
+);
 
 export default router;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { verifyEmail } from "../services/authService.js";
@@ -10,8 +10,15 @@ function VerifyEmail() {
 
   const [status, setStatus] = useState("verifying");
   const [message, setMessage] = useState("");
+  const verificationStarted = useRef(false);
 
   useEffect(() => {
+    if (verificationStarted.current) {
+      return;
+    }
+
+    verificationStarted.current = true;
+
     const run = async () => {
       try {
         const data = await verifyEmail(token);

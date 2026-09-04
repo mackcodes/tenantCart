@@ -144,6 +144,18 @@
   gap: 14px;
 }
 
+.header-tenant-switcher select {
+  max-width: 180px;
+  border: 1px solid #d6ded8;
+  border-radius: 8px;
+  background: #fff;
+  color: #26362e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 28px 9px 10px;
+}
+
 .header-store-link {
   border: 1px solid #d6ded8;
   border-radius: 8px;
@@ -160,6 +172,113 @@
   color: #6f7b73;
   cursor: pointer;
   font-size: 20px;
+}
+
+.account-settings {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 42px 34px 70px;
+}
+
+.settings-panel {
+  margin-top: 24px;
+  border: 1px solid #dce3de;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 26px;
+}
+
+.settings-panel h2 {
+  margin: 0;
+  color: #26362e;
+  font-size: 20px;
+}
+
+.settings-panel p {
+  color: #68746c;
+  line-height: 1.6;
+}
+
+.settings-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.settings-panel__header .eyebrow,
+.settings-panel--danger .eyebrow {
+  margin: 0 0 8px;
+}
+
+.settings-panel--danger {
+  border-color: #e5b9ad;
+}
+
+.settings-panel--danger h2 {
+  color: #8d3023;
+}
+
+.settings-panel--danger label {
+  display: block;
+  margin-top: 22px;
+  color: #4e5b53;
+  font-size: 14px;
+}
+
+.settings-danger-form {
+  display: flex;
+  gap: 12px;
+  margin-top: 9px;
+}
+
+.settings-danger-form input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #cfd8d1;
+  border-radius: 7px;
+  color: #26362e;
+  font: inherit;
+  padding: 11px 12px;
+}
+
+.button--secondary,
+.button--danger {
+  border: 0;
+  border-radius: 7px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 11px 15px;
+}
+
+.button--secondary {
+  background: #26362e;
+}
+
+.button--danger {
+  background: #a63d2e;
+}
+
+.button--secondary:disabled,
+.button--danger:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.settings-notice,
+.settings-error {
+  margin: 18px 0 0;
+  font-weight: 700;
+}
+
+.settings-notice {
+  color: #317044;
+}
+
+.settings-error {
+  color: #a63d2e;
 }
 
 .profile-menu-wrapper {
@@ -535,6 +654,21 @@
 
   .dashboard-home {
     padding: 24px 16px 50px;
+  }
+
+  .account-settings {
+    padding: 28px 16px 50px;
+  }
+
+  .settings-panel__header,
+  .settings-danger-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-panel__header .button,
+  .settings-danger-form .button {
+    width: 100%;
   }
 
   .dashboard-tip,

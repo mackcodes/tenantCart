@@ -1,22 +1,58 @@
-// Razorpay Route (split payments) — NOT YET IMPLEMENTED (stub)
-// Route lets platform create a Linked Account per tenant, then split each order
-// payment between platform commission and merchant payout at capture time.
-// Docs: Linked Accounts -> Orders with transfers[] -> Route settlement.
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
-// import Razorpay from "razorpay";
-// const razorpay = new Razorpay({
-//   key_id: process.env.RAZORPAY_KEY_ID,
-//   key_secret: process.env.RAZORPAY_KEY_SECRET,
-// });
+/**
+ * Build a one-off Razorpay client for a given merchant's credentials.
+ */
+const buildClient = (keyId, keySecret) =>
+  new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-export const createLinkedAccount = async (tenant) => {
-  throw new Error("razorpayService.createLinkedAccount not implemented yet");
+/**
+ * Create a Razorpay order.
+ * @param {string} keyId         - Merchant's Razorpay Key ID
+ * @param {string} keySecret     - Merchant's Razorpay Key Secret
+ * @param {number} amountInPaise - Total in paise (amount × 100)
+ * @param {string} currency      - e.g. "INR"
+ * @param {string} receipt       - Unique receipt id (your internal Order._id)
+ * @returns {Promise<object>}    - Razorpay order object
+ */
+export const createRazorpayOrder = async (
+  keyId,
+  keySecret,
+  amountInPaise,
+  currency = "INR",
+  receipt
+) => {
+  const client = buildClient(keyId, keySecret);
+
+  return client.orders.create({
+    amount: amountInPaise,
+    currency,
+    receipt,
+    payment_capture: 1,
+  });
 };
 
-export const createSplitOrder = async ({ amount, tenantAccountId, platformFee }) => {
-  throw new Error("razorpayService.createSplitOrder not implemented yet");
-};
+/**
+ * Verify the HMAC-SHA256 signature that Razorpay sends back after a payment.
+ * @param {string} keySecret       - Merchant's Razorpay Key Secret
+ * @param {string} razorpayOrderId - The order id returned by Razorpay
+ * @param {string} paymentId       - razorpay_payment_id from the callback
+ * @param {string} signature       - razorpay_signature from the callback
+ * @returns {boolean}
+ */
+export const verifyPaymentSignature = (
+  keySecret,
+  razorpayOrderId,
+  paymentId,
+  signature
+) => {
+  const body = `${razorpayOrderId}|${paymentId}`;
 
-export const verifyWebhookSignature = (rawBody, signature) => {
-  throw new Error("razorpayService.verifyWebhookSignature not implemented yet");
+  const expectedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(body)
+    .digest("hex");
+
+  return expectedSignature === signature;
 };

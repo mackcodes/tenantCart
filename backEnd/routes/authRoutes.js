@@ -14,6 +14,7 @@ import {
 
 import { protect } from "../middlewares/authMiddleware.js";
 import { authRateLimit } from "../middlewares/authRateLimit.js";
+import { requireStoreRegistrant } from "../middlewares/merchantMiddleware.js";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.post(
 router.post(
   "/register-store",
   protect,
+  requireStoreRegistrant,
   registerStore
 );
 

@@ -34,6 +34,9 @@ import ResetPassword from "./pages/ResetPassword.js";
 import VerifyEmail from "./pages/VerifyEmail.js";
 import ResendVerification from "./pages/ResendVerification.js";
 import Dashboard from "./pages/Dashboard.js";
+import DashboardTemplates from "./pages/DashboardTemplates.js";
+import PaymentSettings from "./pages/PaymentSettings.js";
+import AccountSettings from "./pages/AccountSettings.js";
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -94,6 +97,18 @@ const StoreSetupRoute = ({ children }) => {
     );
   }
 
+  if (
+    user.role !== "merchant" &&
+    user.role !== "user"
+  ) {
+    return (
+      <Navigate
+        to={user.role === "admin" ? "/dashboard/admin/tenants" : "/dashboard"}
+        replace
+      />
+    );
+  }
+
   if (user.tenant) {
     return (
       <Navigate
@@ -130,6 +145,16 @@ const PublicRoute = ({ children }) => {
 
 const RecoveryRoute = ({ children }) => {
   return children;
+};
+
+const DashboardHome = () => {
+  const { user } = useAuth();
+
+  if (user?.role === "admin") {
+    return <Navigate to="/dashboard/admin/tenants" replace />;
+  }
+
+  return <Dashboard />;
 };
 
 function AppRoutes() {
@@ -222,7 +247,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardHome />
           </ProtectedRoute>
         }
       />
@@ -242,7 +267,7 @@ function AppRoutes() {
         path="/dashboard/templates"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Templates" />
+            <DashboardTemplates />
           </ProtectedRoute>
         }
       />
@@ -340,7 +365,7 @@ function AppRoutes() {
         path="/dashboard/settings/payments"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Payment settings" />
+            <PaymentSettings />
           </ProtectedRoute>
         }
       />
@@ -376,7 +401,7 @@ function AppRoutes() {
         path="/dashboard/settings/account"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Account settings" />
+            <AccountSettings />
           </ProtectedRoute>
         }
       />

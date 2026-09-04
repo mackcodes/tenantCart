@@ -9,7 +9,9 @@ import orderRoutes from "./routes/orderRoutes.js";
 import storefrontRoutes from "./routes/storefrontRoutes.js";
 import adminTenantRoutes from "./routes/adminTenantRoutes.js";
 import aiAnalyticsRoutes from "./routes/aiAnalyticsRoutes.js";
-
+import templateRoutes from "./routes/templateRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import tenantRoutes from "./routes/tenantRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -48,6 +50,9 @@ app.use("/api/v1/storefront", storefrontRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/ai-analytics", aiAnalyticsRoutes);
+app.use("/api/v1/templates", templateRoutes);
+app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/tenants", tenantRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
