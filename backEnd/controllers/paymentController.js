@@ -1,5 +1,6 @@
 import Order from "../models/Order.js";
 import Tenant from "../models/Tenant.js";
+import RazorpayWebhookEvent from "../models/RazorpayWebhookEvent.js";
 import crypto from "node:crypto";
 import asyncHandler from "../utils/asyncHandler.js";
 import { recordTenantAudit } from "../services/tenantAuditService.js";
@@ -41,6 +42,21 @@ const requireCheckoutToken = (order, token, res) => {
   return false;
 };
 
+const getProcessedRefundAmount = (order) =>
+  (order.refunds || [])
+    .filter((refund) => refund.status === "processed")
+    .reduce((total, refund) => total + refund.amount, 0);
+
+const syncRefundSummary = (order) => {
+  const refundedAmount = getProcessedRefundAmount(order);
+  order.refundedAmount = refundedAmount || null;
+  if (refundedAmount >= order.totalAmount) {
+    order.status = "refunded";
+  } else if (order.status === "refunded") {
+    order.status = "paid";
+  }
+};
+
 // ─── Payment Initiation ──────────────────────────────────────────────────────
 
 /**
@@ -75,7 +91,7 @@ export const initiatePayment = asyncHandler(async (req, res) => {
   const tenant = await Tenant.findById(order.tenant);
 
   const keyId = tenant?.razorpay?.keyId;
-  const keySecret = tenant?.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET;
+  const keySecret = tenant?.razorpay?.keySecret;
 
   if (!keyId || !keySecret) {
     return res.status(400).json({
@@ -168,7 +184,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   // Fetch key secret to verify signature
   const tenant = await Tenant.findById(order.tenant);
 
-  const keySecret = tenant?.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET;
+  const keySecret = tenant?.razorpay?.keySecret;
 
   if (!keySecret) {
     return res.status(400).json({
@@ -216,6 +232,7 @@ export const getPaymentSettings = asyncHandler(async (req, res) => {
   return res.json({
     keyId: tenantDoc?.razorpay?.keyId || "",
     keySecretSaved: Boolean(tenantDoc?.razorpay?.keySecret),
+    webhookSecretSaved: Boolean(tenantDoc?.razorpay?.webhookSecret),
     onboarded: tenantDoc?.razorpay?.onboarded || false,
     onboardedAt: tenantDoc?.razorpay?.onboardedAt || null,
   });
@@ -228,11 +245,11 @@ export const getPaymentSettings = asyncHandler(async (req, res) => {
  * Body: { keyId, keySecret }
  */
 export const savePaymentSettings = asyncHandler(async (req, res) => {
-  const { keyId, keySecret } = req.body;
+  const { keyId, keySecret, webhookSecret } = req.body;
 
-  if (!keyId || !keySecret) {
+  if (!keyId || !keySecret || !webhookSecret) {
     return res.status(400).json({
-      message: "Both Key ID and Key Secret are required",
+      message: "Key ID, Key Secret, and Webhook Secret are required",
     });
   }
 
@@ -244,6 +261,7 @@ export const savePaymentSettings = asyncHandler(async (req, res) => {
 
   tenantDoc.razorpay.keyId = keyId.trim();
   tenantDoc.razorpay.keySecret = keySecret.trim();
+  tenantDoc.razorpay.webhookSecret = webhookSecret.trim();
   tenantDoc.razorpay.onboarded = true;
 
   // Mark paymentOnboardingComplete in the verification checks
@@ -272,18 +290,20 @@ export const savePaymentSettings = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/v1/payments/onboarding/link
- * Protected, merchant only — save only a Razorpay Key ID (no secret required).
+ * Protected, merchant only — save a tenant's Razorpay Key ID and Key Secret.
  *
- * Body: { razorpayKeyId }
+ * Body: { razorpayKeyId, razorpayKeySecret }
  *
  * Validates the format, optionally probes Razorpay to confirm the key is real,
- * then persists it.  The merchant never touches webhooks or secrets.
+ * then persists both credentials for that tenant.
  */
 export const linkRazorpay = asyncHandler(async (req, res) => {
-  const { razorpayKeyId } = req.body;
+  const { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret } = req.body;
 
-  if (!razorpayKeyId) {
-    return res.status(400).json({ message: "razorpayKeyId is required" });
+  if (!razorpayKeyId || !razorpayKeySecret || !razorpayWebhookSecret) {
+    return res.status(400).json({
+      message: "Key ID, Key Secret, and Webhook Secret are required",
+    });
   }
 
   const trimmed = razorpayKeyId.trim();
@@ -313,6 +333,8 @@ export const linkRazorpay = asyncHandler(async (req, res) => {
   }
 
   tenantDoc.razorpay.keyId = trimmed;
+  tenantDoc.razorpay.keySecret = razorpayKeySecret.trim();
+  tenantDoc.razorpay.webhookSecret = razorpayWebhookSecret.trim();
   tenantDoc.razorpay.onboarded = true;
   tenantDoc.razorpay.onboardedAt = new Date();
 
@@ -354,6 +376,7 @@ export const disconnectRazorpay = asyncHandler(async (req, res) => {
 
   tenantDoc.razorpay.keyId = null;
   tenantDoc.razorpay.keySecret = null;
+  tenantDoc.razorpay.webhookSecret = null;
   tenantDoc.razorpay.onboarded = false;
   tenantDoc.razorpay.onboardedAt = null;
 
@@ -396,27 +419,7 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Missing webhook signature" });
   }
 
-  // req.body is a Buffer when the route uses express.raw()
-  let isValid;
-
-  try {
-    isValid = verifyWebhookSignature(req.body, signature);
-  } catch (configError) {
-    console.error("Webhook config error:", configError.message);
-    return res.status(500).json({ message: "Webhook not configured" });
-  }
-
-  if (!isValid) {
-    // Log clearly so the failure shows in terminal and ngrok inspector,
-    // but return 200 to stop Razorpay retry storms.  The payload is ignored.
-    console.warn(
-      "Razorpay webhook: invalid signature — payload ignored",
-      new Date().toISOString()
-    );
-    return res.json({ received: true });
-  }
-
-  // Parse the raw body now that signature is confirmed
+  // Parse the raw body to resolve the tenant whose webhook secret must be used.
   let event;
 
   try {
@@ -426,49 +429,118 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res) => {
   }
 
   const { event: eventName, payload } = event;
+  const payment = payload?.payment?.entity;
+  const refund = payload?.refund?.entity;
+  const razorpayOrderId = payment?.order_id || payload?.order?.entity?.id;
+  const paymentId = payment?.id || refund?.payment_id;
+  const order = razorpayOrderId
+    ? await Order.findOne({ razorpayOrderId }).populate("tenant")
+    : paymentId
+      ? await Order.findOne({ paymentRef: paymentId }).populate("tenant")
+      : null;
+  const webhookSecret = order?.tenant?.razorpay?.webhookSecret ||
+    (process.env.NODE_ENV === "production"
+      ? null
+      : process.env.RAZORPAY_WEBHOOK_SECRET);
+
+  let isValid;
+
+  try {
+    isValid = verifyWebhookSignature(req.body, signature, webhookSecret);
+  } catch (configError) {
+    console.error("Webhook config error:", configError.message);
+    return res.status(500).json({ message: "Webhook not configured" });
+  }
+
+  if (!isValid) {
+    console.warn(
+      "Razorpay webhook: invalid signature — payload rejected",
+      new Date().toISOString()
+    );
+    return res.status(400).json({ message: "Invalid webhook signature" });
+  }
+
+  const eventId = event.id || crypto
+    .createHash("sha256")
+    .update(req.body)
+    .digest("hex");
+
+  let eventRecord;
+  try {
+    eventRecord = await RazorpayWebhookEvent.create({ eventId, eventName });
+  } catch (error) {
+    if (error?.code === 11000) {
+      // Razorpay retries the same event. It was already claimed or processed.
+      return res.json({ received: true, duplicate: true });
+    }
+    throw error;
+  }
 
   if (eventName === "payment.captured" || eventName === "order.paid") {
-    // Razorpay puts the payment entity inside payload.payment.entity
-    const payment = payload?.payment?.entity;
-
-    if (!payment) {
-      // Unexpected payload shape — acknowledge so Razorpay doesn't retry
-      return res.json({ received: true });
-    }
-
-    const razorpayOrderId = payment.order_id;
-    const paymentId = payment.id;
-
-    if (!razorpayOrderId || !paymentId) {
-      return res.json({ received: true });
-    }
-
-    const order = await Order.findOne({ razorpayOrderId });
-
-    if (!order) {
-      // Not our order (multi-merchant edge case or test event) — acknowledge
-      return res.json({ received: true });
-    }
-
-    // Idempotency guard — do nothing if already paid
-    if (order.status !== "paid") {
-      order.status = "paid";
-      order.paymentRef = paymentId;
-      await order.save();
+    if (payment?.order_id && payment.id) {
+      if (order) {
+        order.status = "paid";
+        order.paymentRef = payment.id;
+        await order.save();
+      }
     }
   } else if (eventName === "payment.failed") {
-    // We intentionally leave the order as "pending" so the customer can retry.
-    // Log for observability only.
-    const payment = payload?.payment?.entity;
     console.warn(
       "Razorpay payment.failed webhook received:",
       payment?.order_id,
       payment?.id,
       payment?.error_description
     );
+
+    if (payment?.order_id) {
+      // The order was resolved before signature verification.
+    }
+  } else if (
+    eventName === "refund.created" ||
+    eventName === "refund.processed" ||
+    eventName === "refund.failed"
+  ) {
+    if (refund?.id && refund.payment_id) {
+      if (order) {
+        const amount = Number(refund.amount || 0) / 100;
+        const existingRefund = order.refunds.find(
+          (entry) => entry.refundId === refund.id
+        );
+        const nextStatus = eventName === "refund.failed"
+          ? "failed"
+          : eventName === "refund.processed"
+            ? "processed"
+            : "pending";
+
+        if (existingRefund) {
+          existingRefund.status = nextStatus;
+          existingRefund.failureReason = refund.error_description || "";
+          existingRefund.processedAt = nextStatus === "processed"
+            ? new Date()
+            : existingRefund.processedAt;
+        } else {
+          order.refunds.push({
+            refundId: refund.id,
+            amount,
+            status: nextStatus,
+            failureReason: refund.error_description || "",
+            source: "webhook",
+            processedAt: nextStatus === "processed" ? new Date() : null,
+          });
+        }
+
+        syncRefundSummary(order);
+        await order.save();
+      }
+    }
   }
 
-  // Always acknowledge — Razorpay will retry on non-2xx responses
+  eventRecord.status = order ? "processed" : "ignored";
+  eventRecord.order = order?._id || null;
+  eventRecord.processedAt = new Date();
+  await eventRecord.save();
+
+  // Always acknowledge — Razorpay will retry on non-2xx responses.
   return res.json({ received: true });
 });
 
@@ -498,7 +570,43 @@ export const refundOrder = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
+  if (!order.paymentRef) {
+    return res.status(400).json({
+      message:
+        "No Razorpay payment reference found on this order. Refund must be issued manually.",
+    });
+  }
+
   const refundableStatuses = ["paid", "shipped"];
+  const processedAmount = getProcessedRefundAmount(order);
+  const pendingAmount = (order.refunds || [])
+    .filter((refund) => refund.status === "pending")
+    .reduce((total, refund) => total + refund.amount, 0);
+
+  const { amount: amountInRupees } = req.body;
+  const requestedAmount = amountInRupees === undefined || amountInRupees === null
+    ? order.totalAmount - processedAmount - pendingAmount
+    : Number(amountInRupees);
+
+  if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+    const existingRefund = order.refunds.find(
+      (refund) => refund.status === "pending" || refund.status === "processed"
+    );
+
+    if (existingRefund) {
+      return res.json({
+        message: "Refund already requested",
+        order: {
+          id: order._id,
+          status: order.status,
+          refundId: existingRefund.refundId,
+          refundedAmount: order.refundedAmount,
+        },
+      });
+    }
+
+    return res.status(400).json({ message: "No refundable amount remains" });
+  }
 
   if (!refundableStatuses.includes(order.status)) {
     return res.status(400).json({
@@ -506,10 +614,27 @@ export const refundOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  if (!order.paymentRef) {
+  if (requestedAmount > order.totalAmount - processedAmount - pendingAmount) {
     return res.status(400).json({
-      message:
-        "No Razorpay payment reference found on this order. Refund must be issued manually.",
+      message: `Refund amount (₹${requestedAmount}) exceeds the remaining refundable amount`,
+    });
+  }
+
+  const amountInPaise = Math.round(requestedAmount * 100);
+  const duplicateRefund = order.refunds.find(
+    (refund) => refund.amount === requestedAmount &&
+      ["pending", "processed"].includes(refund.status)
+  );
+
+  if (duplicateRefund) {
+    return res.json({
+      message: "Refund already requested",
+      order: {
+        id: order._id,
+        status: order.status,
+        refundId: duplicateRefund.refundId,
+        refundedAmount: order.refundedAmount,
+      },
     });
   }
 
@@ -520,29 +645,6 @@ export const refundOrder = asyncHandler(async (req, res) => {
       message: "Store payment credentials are not configured",
     });
   }
-
-  const { amount: amountInRupees } = req.body;
-
-  let amountInPaise;
-
-  if (amountInRupees !== undefined && amountInRupees !== null) {
-    const parsed = Number(amountInRupees);
-
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return res.status(400).json({
-        message: "amount must be a positive number (in rupees)",
-      });
-    }
-
-    if (parsed > order.totalAmount) {
-      return res.status(400).json({
-        message: `Refund amount (₹${parsed}) cannot exceed order total (₹${order.totalAmount})`,
-      });
-    }
-
-    amountInPaise = Math.round(parsed * 100);
-  }
-  // If amountInRupees is omitted, amountInPaise stays undefined → full refund
 
   let razorpayRefund;
 
@@ -563,16 +665,25 @@ export const refundOrder = asyncHandler(async (req, res) => {
   }
 
   const refundedRupees = razorpayRefund.amount / 100;
+  const refundStatus = razorpayRefund.status === "processed"
+    ? "processed"
+    : "pending";
 
-  order.status = "refunded";
+  order.refunds.push({
+    refundId: razorpayRefund.id,
+    amount: refundedRupees,
+    status: refundStatus,
+    source: "merchant",
+    processedAt: refundStatus === "processed" ? new Date() : null,
+  });
   order.refundId = razorpayRefund.id;
-  order.refundedAmount = refundedRupees;
+  syncRefundSummary(order);
   await order.save();
 
   await recordTenantAudit({
     tenantId,
     actorId: req.user._id,
-    action: "order.refunded",
+    action: refundStatus === "processed" ? "order.refunded" : "order.refund_requested",
     targetType: "order",
     targetId: order._id,
     metadata: {

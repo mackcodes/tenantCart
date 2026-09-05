@@ -92,8 +92,12 @@ export const verifyPaymentSignature = (
  * @param {string}        signature - Value of the X-Razorpay-Signature header
  * @returns {boolean}
  */
-export const verifyWebhookSignature = (rawBody, signature) => {
-  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+export const verifyWebhookSignature = (
+  rawBody,
+  signature,
+  configuredSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+) => {
+  const webhookSecret = configuredSecret;
 
   if (!webhookSecret) {
     throw new Error("RAZORPAY_WEBHOOK_SECRET is not configured");

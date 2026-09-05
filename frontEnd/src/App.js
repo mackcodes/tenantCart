@@ -7,6 +7,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useParams,
 } from "react-router-dom";
 
 import {
@@ -14,8 +15,12 @@ import {
   useAuth,
 } from "./context/AuthContext.js";
 
+import {
+  CustomerAuthProvider,
+  useCustomerAuth,
+} from "./context/CustomerAuthContext.js";
+
 import DashboardLayout from "./components/dashboard/DashboardLayout.js";
-import ComingSoon from "./components/ComingSoon.js";
 import MerchantProducts from "./pages/MerchantProducts.js";
 import DashboardOrders from "./pages/DashboardOrders.js";
 import DashboardAnalytics from "./pages/DashboardAnalytics.js";
@@ -43,6 +48,18 @@ import StorePolicies from "./pages/StorePolicies.js";
 import DashboardCustomers from "./pages/DashboardCustomers.js";
 import Discounts from "./pages/Discounts.js";
 import DashboardContent from "./pages/DashboardContent.js";
+import Growth from "./pages/Growth.js";
+import Markets from "./pages/Markets.js";
+import HelpCenter from "./pages/HelpCenter.js";
+import Profile from "./pages/Profile.js";
+import Billing from "./pages/Billing.js";
+
+// Storefront customer-account pages
+import StorefrontLogin from "./pages/StorefrontLogin.js";
+import StorefrontMyOrders from "./pages/StorefrontMyOrders.js";
+import StorefrontForgotPassword from "./pages/StorefrontForgotPassword.js";
+import StorefrontResetPassword from "./pages/StorefrontResetPassword.js";
+import StorefrontVerifyEmail from "./pages/StorefrontVerifyEmail.js";
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -163,6 +180,59 @@ const DashboardHome = () => {
   return <Dashboard />;
 };
 
+/**
+ * Resolves the store's display name from the storefront API so all customer
+ * pages can pass `storeName` to their children without each page re-fetching.
+ * Also wraps children in the CustomerAuthProvider scoped to this slug.
+ */
+const CustomerStoreLayout = ({ children }) => {
+  const { slug } = useParams();
+  const [storeName, setStoreName] = React.useState("");
+
+  React.useEffect(() => {
+    if (!slug) return;
+    fetch(
+      `${process.env.REACT_APP_API_BASE_URL || "http://localhost:8080/api/v1"}/storefront/${slug}`
+    )
+      .then((r) => r.json())
+      .then((d) => setStoreName(d.store?.storeName || ""))
+      .catch(() => {});
+  }, [slug]);
+
+  return (
+    <CustomerAuthProvider slug={slug}>
+      {React.Children.map(children, (child) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child, { slug, storeName })
+          : child
+      )}
+    </CustomerAuthProvider>
+  );
+};
+
+/**
+ * Redirects to /store/:slug/account if the customer is not authenticated.
+ * Used to guard the My Orders page.
+ */
+const CustomerRoute = ({ children }) => {
+  const { customer, loading } = useCustomerAuth();
+  const { slug } = useParams();
+
+  if (loading) {
+    return (
+      <p style={{ padding: "48px", textAlign: "center", color: "#68756d" }}>
+        Checking session…
+      </p>
+    );
+  }
+
+  if (!customer) {
+    return <Navigate to={`/store/${slug}/account`} replace />;
+  }
+
+  return children;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -179,6 +249,54 @@ function AppRoutes() {
       <Route
         path="/store/:slug/checkout"
         element={<Checkout />}
+      />
+
+      {/* ── Storefront customer-account routes ──────────────────────────── */}
+      <Route
+        path="/store/:slug/account"
+        element={
+          <CustomerStoreLayout>
+            <StorefrontLogin />
+          </CustomerStoreLayout>
+        }
+      />
+
+      <Route
+        path="/store/:slug/my-orders"
+        element={
+          <CustomerStoreLayout>
+            <CustomerRoute>
+              <StorefrontMyOrders />
+            </CustomerRoute>
+          </CustomerStoreLayout>
+        }
+      />
+
+      <Route
+        path="/store/:slug/forgot-password"
+        element={
+          <CustomerStoreLayout>
+            <StorefrontForgotPassword />
+          </CustomerStoreLayout>
+        }
+      />
+
+      <Route
+        path="/store/:slug/reset-password/:token"
+        element={
+          <CustomerStoreLayout>
+            <StorefrontResetPassword />
+          </CustomerStoreLayout>
+        }
+      />
+
+      <Route
+        path="/store/:slug/verify-email/:token"
+        element={
+          <CustomerStoreLayout>
+            <StorefrontVerifyEmail />
+          </CustomerStoreLayout>
+        }
       />
 
       <Route
@@ -302,7 +420,7 @@ function AppRoutes() {
         path="/dashboard/growth"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Growth" />
+            <Growth />
           </ProtectedRoute>
         }
       />
@@ -329,7 +447,7 @@ function AppRoutes() {
         path="/dashboard/markets"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Markets" />
+            <Markets />
           </ProtectedRoute>
         }
       />
@@ -407,7 +525,7 @@ function AppRoutes() {
         path="/dashboard/settings/billing"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Billing and plan" />
+            <Billing />
           </ProtectedRoute>
         }
       />
@@ -425,7 +543,7 @@ function AppRoutes() {
         path="/dashboard/profile"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Profile" />
+            <Profile />
           </ProtectedRoute>
         }
       />
@@ -443,7 +561,7 @@ function AppRoutes() {
         path="/help"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Help center" />
+            <HelpCenter />
           </ProtectedRoute>
         }
       />

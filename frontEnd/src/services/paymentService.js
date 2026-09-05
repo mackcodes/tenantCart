@@ -45,15 +45,19 @@ export const savePaymentSettings = (data) => {
 };
 
 /**
- * Guided onboarding — link a Razorpay Key ID only (no secret required).
- * The backend validates and verifies the key with Razorpay before saving.
- * Body: { razorpayKeyId }
+ * Guided onboarding — link tenant-specific Razorpay credentials.
+ * The backend validates the Key ID before saving both credentials.
+ * Body: { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret }
  * Returns { message, keyId, onboarded, onboardedAt }
  */
-export const linkRazorpay = (razorpayKeyId) => {
+export const linkRazorpay = (
+  razorpayKeyId,
+  razorpayKeySecret,
+  razorpayWebhookSecret
+) => {
   return api("/payments/onboarding/link", {
     method: "POST",
-    body: { razorpayKeyId },
+    body: { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret },
   });
 };
 

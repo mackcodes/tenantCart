@@ -136,6 +136,11 @@ const tenantSchema = new mongoose.Schema(
         default: null,
       },
 
+      webhookSecret: {
+        type: String,
+        default: null,
+      },
+
       onboarded: {
         type: Boolean,
         default: false,

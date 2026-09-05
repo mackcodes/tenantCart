@@ -71,3 +71,10 @@ export const resendVerificationEmail = (email) => {
     body: { email },
   });
 };
+
+export const updateProfile = (payload) => {
+  return request("/auth/profile", {
+    method: "PUT",
+    body: payload,
+  });
+};

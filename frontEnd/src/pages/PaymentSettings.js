@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   getPaymentSettings,
-  linkRazorpay,
+  savePaymentSettings,
   disconnectRazorpay,
 } from "../services/paymentService.js";
 import DashboardLayout from "../components/dashboard/DashboardLayout.js";
@@ -32,6 +32,8 @@ const StepBadge = ({ n }) => (
 
 const OnboardingGuide = ({ onConnect }) => {
   const [keyId, setKeyId] = useState("");
+  const [keySecret, setKeySecret] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -39,13 +41,17 @@ const OnboardingGuide = ({ onConnect }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!keyId.trim()) {
-      setError("Please paste your Key ID before connecting.");
+    if (!keyId.trim() || !keySecret.trim() || !webhookSecret.trim()) {
+      setError("Key ID, Key Secret, and Webhook Secret are all required.");
       return;
     }
     try {
       setSaving(true);
-      const data = await linkRazorpay(keyId.trim());
+      const data = await savePaymentSettings({
+        keyId: keyId.trim(),
+        keySecret: keySecret.trim(),
+        webhookSecret: webhookSecret.trim(),
+      });
       onConnect(data);
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -104,7 +110,7 @@ const OnboardingGuide = ({ onConnect }) => {
           <div className="rz-step">
             <div className="rz-step__header">
               <StepBadge n={2} />
-              <h3>Copy your Key ID from Razorpay</h3>
+              <h3>Copy your API Keys from Razorpay</h3>
             </div>
             <ol className="rz-step__instructions">
               <li>
@@ -122,8 +128,7 @@ const OnboardingGuide = ({ onConnect }) => {
                 Go to <strong>Settings → API Keys → Generate Test Key</strong>
               </li>
               <li>
-                Copy the <strong>Key ID</strong> — it looks like{" "}
-                <code className="rz-code">rzp_test_xxxxxxxxxx</code>
+                Copy both the <strong>Key ID</strong> (<code className="rz-code">rzp_test_xxxx</code>) and <strong>Key Secret</strong>
               </li>
             </ol>
           </div>
@@ -132,11 +137,11 @@ const OnboardingGuide = ({ onConnect }) => {
           <div className="rz-step">
             <div className="rz-step__header">
               <StepBadge n={3} />
-              <h3>Paste your Key ID below</h3>
+              <h3>Paste your API Keys below</h3>
             </div>
             <form className="rz-connect-form" onSubmit={handleSubmit}>
               <label className="rz-connect-form__label">
-                <span>Razorpay Key ID</span>
+                <span>Razorpay Key ID *</span>
                 <input
                   type="text"
                   value={keyId}
@@ -145,6 +150,35 @@ const OnboardingGuide = ({ onConnect }) => {
                   autoComplete="off"
                   spellCheck="false"
                   className="rz-connect-form__input"
+                  required
+                />
+              </label>
+
+              <label className="rz-connect-form__label" style={{ marginTop: "12px" }}>
+                <span>Razorpay Key Secret *</span>
+                <input
+                  type="password"
+                  value={keySecret}
+                  onChange={(e) => setKeySecret(e.target.value)}
+                  placeholder="Paste Key Secret here"
+                  autoComplete="off"
+                  spellCheck="false"
+                  className="rz-connect-form__input"
+                  required
+                />
+              </label>
+
+              <label className="rz-connect-form__label" style={{ marginTop: "12px" }}>
+                <span>Razorpay Webhook Secret *</span>
+                <input
+                  type="password"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="Paste the secret from Razorpay Webhooks"
+                  autoComplete="new-password"
+                  spellCheck="false"
+                  className="rz-connect-form__input"
+                  required
                 />
               </label>
 
@@ -168,6 +202,8 @@ const OnboardingGuide = ({ onConnect }) => {
                   onClick={() => {
                     setOpen(false);
                     setKeyId("");
+                    setKeySecret("");
+                    setWebhookSecret("");
                     setError("");
                   }}
                 >
@@ -183,9 +219,10 @@ const OnboardingGuide = ({ onConnect }) => {
       <div className="rz-onboarding-footer">
         <span>🔒</span>
         <p>
-          We only need your Key ID — no webhook setup or secret keys required
-          from you. Your customers&rsquo; payments go directly to your linked
-          Razorpay bank account.
+          Your Key Secret is stored only on the backend and is never returned
+          to the browser. Configure the production webhook separately in your
+          Razorpay Dashboard. Payments settle directly to your linked bank
+          account.
         </p>
       </div>
     </div>
