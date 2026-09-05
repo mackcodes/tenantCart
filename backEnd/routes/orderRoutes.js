@@ -14,12 +14,16 @@ import {
   requireTenant,
   requireTenantRole,
 } from "../middlewares/tenantMiddleware.js";
+import { optionalCustomer } from "../middlewares/customerAuthMiddleware.js";
 import validateObjectId from "../middlewares/validateObjectId.js";
 
 const router = express.Router();
 
-// Public — guest checkout against a specific store
-router.post("/checkout/:slug", createOrder);
+// Public — guest checkout against a specific store.
+// optionalCustomer attaches req.customer when a valid customer session cookie
+// is present, enabling order linking without breaking the unauthenticated path.
+router.post("/checkout/:slug", optionalCustomer, createOrder);
+
 
 // Tenant members only — every query uses the verified active tenant.
 router.use(protect, requireTenant);

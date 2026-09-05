@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import storefrontRoutes from "./routes/storefrontRoutes.js";
+import storefrontAuthRoutes from "./routes/storefrontAuthRoutes.js";
 import adminTenantRoutes from "./routes/adminTenantRoutes.js";
 import aiAnalyticsRoutes from "./routes/aiAnalyticsRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
@@ -17,7 +18,10 @@ import discountRoutes from "./routes/discountRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
 import policyRoutes from "./routes/policyRoutes.js";
 import contentRoutes from "./routes/contentRoutes.js";
+import marketsRoutes from "./routes/marketsRoutes.js";
+import { handleRazorpayWebhook } from "./controllers/paymentController.js";
 dotenv.config();
+
 
 const app = express();
 
@@ -30,6 +34,17 @@ app.use(
     "https://localhost:3000",
     credentials: true,
   })
+);
+
+// ── Razorpay webhook — MUST be registered before express.json() ───────────────
+// Razorpay signs the exact raw bytes it sends.  If express.json() runs first it
+// re-serialises the body, potentially altering whitespace/key order and breaking
+// the HMAC.  Registering directly on app (not inside paymentRoutes) guarantees
+// the route is matched before the global JSON middleware in this file.
+app.post(
+  "/api/v1/payments/razorpay/webhook",
+  express.raw({ type: "application/json" }),
+  handleRazorpayWebhook
 );
 
 app.use(express.json({ limit: "3mb" }));
@@ -54,6 +69,9 @@ app.get("/api/v1/debug", (req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/admin/tenants", adminTenantRoutes);
+// Storefront auth & customer my-orders — must be mounted before the generic
+// storefrontRoutes catch-all so :slug/auth/* paths are matched correctly.
+app.use("/api/v1/storefront/:slug", storefrontAuthRoutes);
 app.use("/api/v1/storefront", storefrontRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/orders", orderRoutes);
@@ -66,6 +84,7 @@ app.use("/api/v1/discounts", discountRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/policies", policyRoutes);
 app.use("/api/v1/content", contentRoutes);
+app.use("/api/v1/markets", marketsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

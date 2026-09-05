@@ -43,3 +43,30 @@ export const savePaymentSettings = (data) => {
     body: data,
   });
 };
+
+/**
+ * Guided onboarding — link tenant-specific Razorpay credentials.
+ * The backend validates the Key ID before saving both credentials.
+ * Body: { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret }
+ * Returns { message, keyId, onboarded, onboardedAt }
+ */
+export const linkRazorpay = (
+  razorpayKeyId,
+  razorpayKeySecret,
+  razorpayWebhookSecret
+) => {
+  return api("/payments/onboarding/link", {
+    method: "POST",
+    body: { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret },
+  });
+};
+
+/**
+ * Guided onboarding — disconnect Razorpay from this store.
+ * Returns { message }
+ */
+export const disconnectRazorpay = () => {
+  return api("/payments/onboarding/link", {
+    method: "DELETE",
+  });
+};

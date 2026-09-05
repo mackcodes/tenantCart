@@ -1,0 +1,293 @@
+/*
+ * StorefrontAuth.css
+ *
+ * Overrides / extensions for Auth.css applied to the customer-facing
+ * storefront auth pages (/store/:slug/account, /store/:slug/forgot-password,
+ * /store/:slug/reset-password/:token, /store/:slug/verify-email/:token).
+ *
+ * These pages render a single centred panel — no split-screen introduction
+ * column — to keep focus on the action and maintain the store's brand identity.
+ */
+
+/* ── Page shell ──────────────────────────────────────────────────────────────*/
+
+.storefront-auth-page {
+  background: #f8f6f1;
+}
+
+/* Re-centre the brand link; storefront pages show the store name, not the
+   TenantCart platform brand. */
+.storefront-auth-page .auth-brand {
+  position: static;
+  display: block;
+  margin: 0 auto 0;
+  padding: 32px 0 0;
+  text-align: center;
+  font-size: 22px;
+}
+
+/* Single-column layout — replace the two-column grid with a narrow centred
+   column so the panel sits in the middle of the viewport. */
+.storefront-auth-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100dvh - 80px);
+  width: min(520px, calc(100% - 40px));
+  margin: 32px auto 48px;
+  padding: 0;
+  gap: 0;
+}
+
+.storefront-auth-shell .auth-panel {
+  width: 100%;
+  max-width: 520px;
+  justify-self: unset;
+}
+
+/* ── "Back to store" link ────────────────────────────────────────────────────*/
+
+.storefront-auth-back {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #68756d;
+}
+
+.storefront-auth-back a {
+  color: #68756d;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.storefront-auth-back a:hover {
+  color: #24342d;
+  text-decoration: underline;
+}
+
+/* ── Toggle button (login <-> register) ──────────────────────────────────────*/
+
+.auth-footer-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c76d50;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.auth-footer-toggle:hover {
+  text-decoration: underline;
+}
+
+/* ── My-orders page ──────────────────────────────────────────────────────────*/
+
+.my-orders-page {
+  min-height: 100dvh;
+  background: #f8f6f1;
+  color: #24342d;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.my-orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 28px max(24px, calc((100vw - 1100px) / 2));
+  border-bottom: 1px solid #d8d7cc;
+  background: #f8f6f1;
+}
+
+.my-orders-brand {
+  color: #24342d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-decoration: none;
+}
+
+.my-orders-header-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+}
+
+.my-orders-header-right span {
+  color: #68756d;
+}
+
+.my-orders-logout {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c76d50;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.my-orders-logout:hover {
+  text-decoration: underline;
+}
+
+.my-orders-content {
+  width: min(860px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.my-orders-content h1 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -1px;
+}
+
+.my-orders-content > p.my-orders-subtitle {
+  margin: 0 0 36px;
+  color: #68756d;
+  font-size: 14px;
+}
+
+.my-orders-empty {
+  margin-top: 48px;
+  text-align: center;
+  color: #68756d;
+  font-size: 15px;
+}
+
+.my-orders-empty a {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 11px 22px;
+  border: 1px solid #24342d;
+  background: #24342d;
+  color: #fffdf8;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+/* Order card */
+.my-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-order-card {
+  border: 1px solid #d8d7cc;
+  background: #fffdf8;
+  padding: 20px 24px;
+}
+
+.my-order-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #ede9df;
+}
+
+.my-order-id {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: #68756d;
+}
+
+.my-order-date {
+  font-size: 12px;
+  color: #68756d;
+  margin-top: 4px;
+}
+
+.my-order-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.my-order-status--pending   { background: #fef3cd; color: #856404; }
+.my-order-status--paid      { background: #d1e7dd; color: #0a5c36; }
+.my-order-status--shipped   { background: #cfe2ff; color: #084298; }
+.my-order-status--delivered { background: #d1e7dd; color: #0a5c36; }
+.my-order-status--cancelled { background: #f8d7da; color: #842029; }
+.my-order-status--refunded  { background: #e2e3e5; color: #383d41; }
+
+.my-order-items {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.my-order-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #24342d;
+}
+
+.my-order-item-qty {
+  color: #68756d;
+}
+
+.my-order-total-row {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid #ede9df;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── Verify-email page ───────────────────────────────────────────────────────*/
+
+.verify-email-status {
+  margin-top: 20px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────*/
+
+@media (max-width: 560px) {
+  .storefront-auth-shell {
+    width: calc(100% - 32px);
+  }
+
+  .my-orders-header {
+    padding: 20px 16px;
+  }
+
+  .my-orders-content {
+    width: calc(100% - 32px);
+    padding-top: 32px;
+  }
+
+  .my-order-card {
+    padding: 16px;
+  }
+}

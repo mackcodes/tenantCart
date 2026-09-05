@@ -210,6 +210,10 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   const order = await Order.create({
     tenant: tenant._id,
+    // Link the order to an authenticated customer account when present so
+    // the customer can retrieve their order history via /my-orders. Guest
+    // checkouts (no req.customer) leave this null.
+    customer: req.customer?._id ?? null,
     customerName: customerName.trim(),
     customerEmail: customerEmail.trim().toLowerCase(),
     customerPhone: customerPhone?.trim() || "",

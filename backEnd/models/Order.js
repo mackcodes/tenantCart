@@ -30,6 +30,44 @@ const orderItemSchema = new mongoose.Schema(
   }
 );
 
+const refundSchema = new mongoose.Schema(
+  {
+    refundId: {
+      type: String,
+      required: true,
+    },
+
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    status: {
+      type: String,
+      enum: ["pending", "processed", "failed"],
+      default: "pending",
+    },
+
+    failureReason: {
+      type: String,
+      default: "",
+    },
+
+    source: {
+      type: String,
+      enum: ["merchant", "webhook"],
+      default: "merchant",
+    },
+
+    processedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     tenant: {
@@ -37,6 +75,12 @@ const orderSchema = new mongoose.Schema(
       ref: "Tenant",
       required: true,
       index: true,
+    },
+
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      default: null,
     },
 
     customerName: {
@@ -139,6 +183,11 @@ const orderSchema = new mongoose.Schema(
     refundedAmount: {
       type: Number,
       default: null,
+    },
+
+    refunds: {
+      type: [refundSchema],
+      default: [],
     },
 
     checkoutTokenHash: {

@@ -1,16 +1,329 @@
 import { useEffect, useRef, useState } from "react";
-import { getPaymentSettings, savePaymentSettings } from "../services/paymentService.js";
+import {
+  getPaymentSettings,
+  savePaymentSettings,
+  disconnectRazorpay,
+} from "../services/paymentService.js";
 import DashboardLayout from "../components/dashboard/DashboardLayout.js";
 
-const PaymentSettings = () => {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const formatDate = (iso) => {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const maskKeyId = (keyId) => {
+  if (!keyId) return "";
+  // Show first 12 chars (rzp_test_xxxxx) then mask the rest
+  if (keyId.length <= 16) return keyId;
+  return keyId.slice(0, 12) + "••••" + keyId.slice(-4);
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const StepBadge = ({ n }) => (
+  <span className="rz-step-badge">{n}</span>
+);
+
+const OnboardingGuide = ({ onConnect }) => {
   const [keyId, setKeyId] = useState("");
   const [keySecret, setKeySecret] = useState("");
-  const [onboarded, setOnboarded] = useState(false);
-  const [keySecretSaved, setKeySecretSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!keyId.trim() || !keySecret.trim() || !webhookSecret.trim()) {
+      setError("Key ID, Key Secret, and Webhook Secret are all required.");
+      return;
+    }
+    try {
+      setSaving(true);
+      const data = await savePaymentSettings({
+        keyId: keyId.trim(),
+        keySecret: keySecret.trim(),
+        webhookSecret: webhookSecret.trim(),
+      });
+      onConnect(data);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rz-onboarding-card">
+      {/* Hero banner */}
+      <div className="rz-onboarding-hero">
+        <div className="rz-onboarding-hero__logo">₹</div>
+        <div>
+          <h2>Accept Payments with Razorpay</h2>
+          <p>
+            Connect your Razorpay account to let customers pay via UPI, cards,
+            net banking, and wallets. Takes about 2 minutes.
+          </p>
+        </div>
+        {!open && (
+          <button
+            className="button button--primary rz-get-started-btn"
+            onClick={() => setOpen(true)}
+          >
+            Get Started
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="rz-onboarding-steps">
+          {/* Step 1 */}
+          <div className="rz-step">
+            <div className="rz-step__header">
+              <StepBadge n={1} />
+              <h3>Sign up for Razorpay</h3>
+            </div>
+            <p className="rz-step__body">
+              Don&rsquo;t have an account yet?{" "}
+              <a
+                href="https://razorpay.com/signup/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rz-link"
+              >
+                Create one at razorpay.com →
+              </a>{" "}
+              You&rsquo;ll need your business email, phone number, and basic KYC
+              details (PAN, Aadhaar, bank account). Test mode is available
+              immediately after sign-up.
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="rz-step">
+            <div className="rz-step__header">
+              <StepBadge n={2} />
+              <h3>Copy your API Keys from Razorpay</h3>
+            </div>
+            <ol className="rz-step__instructions">
+              <li>
+                Log in to your{" "}
+                <a
+                  href="https://dashboard.razorpay.com/app/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rz-link"
+                >
+                  Razorpay Dashboard
+                </a>
+              </li>
+              <li>
+                Go to <strong>Settings → API Keys → Generate Test Key</strong>
+              </li>
+              <li>
+                Copy both the <strong>Key ID</strong> (<code className="rz-code">rzp_test_xxxx</code>) and <strong>Key Secret</strong>
+              </li>
+            </ol>
+          </div>
+
+          {/* Step 3 — the form */}
+          <div className="rz-step">
+            <div className="rz-step__header">
+              <StepBadge n={3} />
+              <h3>Paste your API Keys below</h3>
+            </div>
+            <form className="rz-connect-form" onSubmit={handleSubmit}>
+              <label className="rz-connect-form__label">
+                <span>Razorpay Key ID *</span>
+                <input
+                  type="text"
+                  value={keyId}
+                  onChange={(e) => setKeyId(e.target.value)}
+                  placeholder="rzp_test_xxxxxxxxxxxx"
+                  autoComplete="off"
+                  spellCheck="false"
+                  className="rz-connect-form__input"
+                  required
+                />
+              </label>
+
+              <label className="rz-connect-form__label" style={{ marginTop: "12px" }}>
+                <span>Razorpay Key Secret *</span>
+                <input
+                  type="password"
+                  value={keySecret}
+                  onChange={(e) => setKeySecret(e.target.value)}
+                  placeholder="Paste Key Secret here"
+                  autoComplete="off"
+                  spellCheck="false"
+                  className="rz-connect-form__input"
+                  required
+                />
+              </label>
+
+              <label className="rz-connect-form__label" style={{ marginTop: "12px" }}>
+                <span>Razorpay Webhook Secret *</span>
+                <input
+                  type="password"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="Paste the secret from Razorpay Webhooks"
+                  autoComplete="new-password"
+                  spellCheck="false"
+                  className="rz-connect-form__input"
+                  required
+                />
+              </label>
+
+              {error && (
+                <p className="rz-error" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="rz-connect-form__actions">
+                <button
+                  type="submit"
+                  className="button button--primary"
+                  disabled={saving}
+                >
+                  {saving ? "Verifying & Connecting…" : "Save & Connect"}
+                </button>
+                <button
+                  type="button"
+                  className="rz-cancel-btn"
+                  onClick={() => {
+                    setOpen(false);
+                    setKeyId("");
+                    setKeySecret("");
+                    setWebhookSecret("");
+                    setError("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Info footer */}
+      <div className="rz-onboarding-footer">
+        <span>🔒</span>
+        <p>
+          Your Key Secret is stored only on the backend and is never returned
+          to the browser. Configure the production webhook separately in your
+          Razorpay Dashboard. Payments settle directly to your linked bank
+          account.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const ConnectedCard = ({ keyId, onboardedAt, onDisconnect }) => {
+  const [confirming, setConfirming] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDisconnect = async () => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    try {
+      setDisconnecting(true);
+      await disconnectRazorpay();
+      onDisconnect();
+    } catch (err) {
+      setError(err.message || "Failed to disconnect. Please try again.");
+      setDisconnecting(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="rz-connected-card">
+      <div className="rz-connected-card__header">
+        <div className="rz-connected-card__logo">₹</div>
+        <div className="rz-connected-card__info">
+          <div className="rz-connected-badge">
+            <span className="rz-connected-badge__dot" />
+            Razorpay Connected
+          </div>
+          <p className="rz-connected-card__keyid">{maskKeyId(keyId)}</p>
+          {onboardedAt && (
+            <p className="rz-connected-card__date">
+              Connected on {formatDate(onboardedAt)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="rz-connected-card__status-list">
+        <p className="rz-status-item rz-status-item--ok">
+          Customers can pay via UPI, cards, net banking, and wallets
+        </p>
+        <p className="rz-status-item rz-status-item--ok">
+          Payments settle directly to your Razorpay bank account
+        </p>
+        <p className="rz-status-item rz-status-item--ok">
+          Order status updates automatically after each payment
+        </p>
+      </div>
+
+      {error && (
+        <p className="rz-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="rz-connected-card__actions">
+        <a
+          href="https://dashboard.razorpay.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rz-link rz-link--external"
+        >
+          View Razorpay Dashboard →
+        </a>
+        <button
+          className={`rz-disconnect-btn${confirming ? " rz-disconnect-btn--confirm" : ""}`}
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+        >
+          {disconnecting
+            ? "Disconnecting…"
+            : confirming
+            ? "Are you sure? Click again to confirm"
+            : "Disconnect"}
+        </button>
+      </div>
+
+      {confirming && (
+        <p className="rz-disconnect-warning">
+          Disconnecting will stop customers from paying online until you
+          reconnect. This does not affect orders already placed.
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const PaymentSettings = () => {
+  const [settings, setSettings] = useState(null); // { keyId, onboarded, onboardedAt }
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -25,13 +338,15 @@ const PaymentSettings = () => {
         setError("");
         const data = await getPaymentSettings();
         if (isMounted.current) {
-          setKeyId(data.keyId || "");
-          setKeySecretSaved(data.keySecretSaved || false);
-          setOnboarded(data.onboarded || false);
+          setSettings({
+            keyId: data.keyId || "",
+            onboarded: data.onboarded || false,
+            onboardedAt: data.onboardedAt || null,
+          });
         }
       } catch (err) {
         if (isMounted.current) {
-          setError(err.message || "Could not load payment settings");
+          setError(err.message || "Could not load payment settings.");
         }
       } finally {
         if (isMounted.current) {
@@ -42,31 +357,16 @@ const PaymentSettings = () => {
     load();
   }, []);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError("");
-    setNotice("");
+  const handleConnect = (data) => {
+    setSettings({
+      keyId: data.keyId,
+      onboarded: data.onboarded,
+      onboardedAt: data.onboardedAt,
+    });
+  };
 
-    if (!keyId.trim() || !keySecret.trim()) {
-      setError("Both Key ID and Key Secret are required.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const data = await savePaymentSettings({
-        keyId: keyId.trim(),
-        keySecret: keySecret.trim(),
-      });
-      setOnboarded(data.onboarded);
-      setKeySecretSaved(true);
-      setKeySecret("");
-      setNotice("Payment settings saved. Your store can now accept Razorpay payments.");
-    } catch (err) {
-      setError(err.message || "Failed to save payment settings");
-    } finally {
-      setSaving(false);
-    }
+  const handleDisconnect = () => {
+    setSettings({ keyId: "", onboarded: false, onboardedAt: null });
   };
 
   return (
@@ -88,111 +388,28 @@ const PaymentSettings = () => {
           </p>
         )}
 
-        {notice && (
-          <p className="form-message form-message--success" role="status">
-            {notice}
-          </p>
-        )}
+        <section className="rz-settings-section">
+          {loading ? (
+            <p className="rz-loading">Loading…</p>
+          ) : settings?.onboarded ? (
+            <ConnectedCard
+              keyId={settings.keyId}
+              onboardedAt={settings.onboardedAt}
+              onDisconnect={handleDisconnect}
+            />
+          ) : (
+            <OnboardingGuide onConnect={handleConnect} />
+          )}
 
-        <section className="payment-settings-section">
-          {/* Status badge */}
-          <div className="payment-status-card">
-            <div className="payment-status-card__header">
-              <span className="payment-provider-logo">₹</span>
-              <div>
-                <strong>Razorpay</strong>
-                <p>Accept UPI, cards, net banking, and wallets at checkout.</p>
-              </div>
-              <span
-                className={`payment-status-badge ${
-                  onboarded
-                    ? "payment-status-badge--active"
-                    : "payment-status-badge--inactive"
-                }`}
-              >
-                {onboarded ? "Active" : "Not configured"}
-              </span>
+          {/* Go-live tip — always visible */}
+          {!loading && (
+            <div className="rz-live-tip">
+              <strong>Ready to go live?</strong> Once you&rsquo;ve completed
+              Razorpay&rsquo;s KYC, generate a{" "}
+              <code className="rz-code">rzp_live_</code> key from your Razorpay
+              dashboard and replace the test key above. No code changes needed.
             </div>
-          </div>
-
-          {/* Credentials form */}
-          <div className="payment-credentials-card">
-            <h2>API credentials</h2>
-            <p className="payment-credentials-hint">
-              Find your API keys in the{" "}
-              <a
-                href="https://dashboard.razorpay.com/app/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Razorpay Dashboard → Settings → API Keys
-              </a>
-              . Use <strong>test mode</strong> keys during development.
-            </p>
-
-            {loading ? (
-              <p>Loading…</p>
-            ) : (
-              <form className="payment-credentials-form" onSubmit={handleSubmit}>
-                <label className="payment-field">
-                  <span>Key ID</span>
-                  <input
-                    type="text"
-                    value={keyId}
-                    onChange={(e) => setKeyId(e.target.value)}
-                    placeholder="rzp_test_xxxxxxxxxxxx"
-                    autoComplete="off"
-                    required
-                  />
-                </label>
-
-                <label className="payment-field">
-                  <span>
-                    Key Secret
-                    {keySecretSaved && (
-                      <em className="payment-field__saved-note">
-                        {" "}— a secret is already saved; enter a new one to replace it
-                      </em>
-                    )}
-                  </span>
-                  <input
-                    type="password"
-                    value={keySecret}
-                    onChange={(e) => setKeySecret(e.target.value)}
-                    placeholder={keySecretSaved ? "Enter new secret to update" : "Enter your Razorpay Key Secret"}
-                    autoComplete="new-password"
-                  />
-                </label>
-
-                <div className="payment-form-actions">
-                  <button
-                    type="submit"
-                    className="button button--primary"
-                    disabled={saving}
-                  >
-                    {saving ? "Saving…" : "Save credentials"}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-
-          {/* Info box */}
-          <div className="payment-info-box">
-            <h3>How it works</h3>
-            <ol>
-              <li>Enter your Razorpay Key ID and Key Secret above.</li>
-              <li>
-                When a customer places an order, they'll see a <strong>"Pay with Razorpay"</strong> button at checkout.
-              </li>
-              <li>
-                Razorpay's payment modal opens — customers can pay via UPI, card, net banking, or wallet.
-              </li>
-              <li>
-                On success, the order status in your dashboard changes from <em>pending</em> to <em>paid</em> automatically.
-              </li>
-            </ol>
-          </div>
+          )}
         </section>
       </main>
     </DashboardLayout>
@@ -200,4 +417,3 @@ const PaymentSettings = () => {
 };
 
 export default PaymentSettings;
-

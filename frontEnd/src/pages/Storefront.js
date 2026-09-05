@@ -11,6 +11,10 @@ import {
 
 import { getStorefront } from "../services/storefrontService.js";
 import { getStorefrontTheme } from "../utils/storefrontTheme.js";
+import {
+  CustomerAuthProvider,
+  useCustomerAuth,
+} from "../context/CustomerAuthContext.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -25,7 +29,33 @@ const formatCurrency = (amount) => {
 
 const getCartKey = (slug) => `tenantcart_cart_${slug}`;
 
-const Storefront = () => {
+/**
+ * Thin account-nav widget rendered inside the storefront header.
+ * Shows "My orders" when a customer session exists, otherwise "Sign in".
+ * Safe to render even when CustomerAuthProvider is still loading.
+ */
+const AccountNav = ({ slug }) => {
+  const { customer, loading } = useCustomerAuth();
+
+  if (loading) return null;
+
+  return (
+    <Link
+      to={customer ? `/store/${slug}/my-orders` : `/store/${slug}/account`}
+      style={{
+        fontSize: "13px",
+        fontWeight: 700,
+        color: "inherit",
+        textDecoration: "none",
+        opacity: 0.75,
+      }}
+    >
+      {customer ? "My orders" : "Sign in"}
+    </Link>
+  );
+};
+
+const StorefrontInner = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
 
@@ -134,6 +164,7 @@ const Storefront = () => {
           <Link to="/" className="site-logo">
             Tenant<span>Cart</span>
           </Link>
+          <AccountNav slug={slug} />
         </nav>
       </header>
 
@@ -307,6 +338,20 @@ const Storefront = () => {
         </footer>
       )}
     </div>
+  );
+};
+
+/**
+ * Public-facing wrapper — provides a CustomerAuthProvider so the AccountNav
+ * inside StorefrontInner can read the customer session without requiring the
+ * full storefront to be wrapped elsewhere in the tree.
+ */
+const Storefront = () => {
+  const { slug } = useParams();
+  return (
+    <CustomerAuthProvider slug={slug}>
+      <StorefrontInner />
+    </CustomerAuthProvider>
   );
 };
 

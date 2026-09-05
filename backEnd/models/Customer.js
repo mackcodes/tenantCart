@@ -61,6 +61,14 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    passwordHash: { type: String, default: null, select: false },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null, select: false },
+    emailVerificationExpires: { type: Date, default: null, select: false },
+    resetPasswordToken: { type: String, default: null, select: false },
+    resetPasswordExpires: { type: Date, default: null, select: false },
+    passwordChangedAt: { type: Date, default: null },
   },
   {
     timestamps: true,

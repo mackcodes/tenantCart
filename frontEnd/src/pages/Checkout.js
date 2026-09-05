@@ -13,6 +13,14 @@ import { checkout } from "../services/orderService.js";
 import { initiatePayment, verifyPayment } from "../services/paymentService.js";
 import { getStorefront } from "../services/storefrontService.js";
 import { validateDiscountCode } from "../services/discountService.js";
+import {
+  CustomerAuthProvider,
+  useCustomerAuth,
+} from "../context/CustomerAuthContext.js";
+import {
+  INDIAN_STATES,
+  isPincodeValidForState,
+} from "../utils/indianStates.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -57,9 +65,10 @@ const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
-const Checkout = () => {
+const CheckoutInner = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { customer } = useCustomerAuth();
 
   const [cart, setCart] = useState({});
   const [shipping, setShipping] = useState({
@@ -76,6 +85,7 @@ const Checkout = () => {
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [applyingDiscount, setApplyingDiscount] = useState(false);
+  const [pincodeError, setPincodeError] = useState("");
 
   useEffect(() => {
     const loadShipping = async () => {
@@ -102,6 +112,18 @@ const Checkout = () => {
       }
     }
   }, [slug]);
+
+  // Pre-fill name and email from the customer session when it becomes available.
+  useEffect(() => {
+    if (customer) {
+      setForm((prev) => ({
+        ...prev,
+        customerName: prev.customerName || customer.name || "",
+        customerEmail: prev.customerEmail || customer.email || "",
+        customerPhone: prev.customerPhone || customer.phone || "",
+      }));
+    }
+  }, [customer]);
 
   const cartItems = Object.values(cart);
   const cartTotal = cartItems.reduce(
@@ -134,10 +156,22 @@ const Checkout = () => {
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setForm((currentForm) => ({
-      ...currentForm,
-      [name]: value,
-    }));
+    setForm((currentForm) => {
+      const nextForm = { ...currentForm, [name]: value };
+
+      // Re-validate pincode whenever the state selector or pincode field changes.
+      const stateObj = INDIAN_STATES.find((s) => s.name === nextForm.state);
+      const stateCode = stateObj ? stateObj.code : null;
+      const pincode = nextForm.postalCode;
+
+      if (pincode && stateCode && !isPincodeValidForState(pincode, stateCode)) {
+        setPincodeError(`Pincode ${pincode} doesn't match the selected state.`);
+      } else {
+        setPincodeError("");
+      }
+
+      return nextForm;
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -147,6 +181,12 @@ const Checkout = () => {
       setError("Your cart is empty");
       return;
     }
+
+    if (pincodeError) {
+      setError(pincodeError);
+      return;
+    }
+
 
     try {
       setSubmitting(true);
@@ -270,6 +310,17 @@ const Checkout = () => {
           <Link to={`/store/${slug}`} className="dark-button">
             Continue shopping
           </Link>
+
+          {customer && (
+            <p style={{ marginTop: "16px" }}>
+              <Link
+                to={`/store/${slug}/my-orders`}
+                style={{ color: "#c76d50", fontWeight: 700, textDecoration: "none" }}
+              >
+                View my orders →
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     );
@@ -466,13 +517,20 @@ const Checkout = () => {
           </label>
 
           <label>
-            State
-            <input
+            State / UT
+            <select
               name="state"
               value={form.state}
               onChange={handleChange}
               required={shippingMethod === "delivery"}
-            />
+            >
+              <option value="">— Select state —</option>
+              {INDIAN_STATES.map((s) => (
+                <option key={s.code} value={s.name}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -482,7 +540,14 @@ const Checkout = () => {
               value={form.postalCode}
               onChange={handleChange}
               required={shippingMethod === "delivery"}
+              inputMode="numeric"
+              maxLength={6}
             />
+            {pincodeError && (
+              <span className="checkout-field-error" role="alert">
+                {pincodeError}
+              </span>
+            )}
           </label>
 
           <label>
@@ -499,7 +564,7 @@ const Checkout = () => {
             <button
               type="submit"
               className="dark-button large-button"
-              disabled={submitting || cartItems.length === 0}
+              disabled={submitting || cartItems.length === 0 || Boolean(pincodeError)}
             >
               {submitting ? "Opening payment…" : "Pay with Razorpay"}
             </button>
@@ -515,6 +580,20 @@ const Checkout = () => {
         </button>
       </div>
     </div>
+  );
+};
+
+/**
+ * Wraps CheckoutInner in a CustomerAuthProvider so the customer session is
+ * available for pre-filling form fields and for the "View my orders" link on
+ * the confirmation screen. Guest checkout continues to work unchanged.
+ */
+const Checkout = () => {
+  const { slug } = useParams();
+  return (
+    <CustomerAuthProvider slug={slug}>
+      <CheckoutInner />
+    </CustomerAuthProvider>
   );
 };
 

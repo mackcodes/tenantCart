@@ -8,6 +8,32 @@ const buildClient = (keyId, keySecret) =>
   new Razorpay({ key_id: keyId, key_secret: keySecret });
 
 /**
+ * Verify that a Key ID is recognisable by Razorpay.
+ *
+ * We call orders.all() with count=1.  With a real key_id and a deliberately
+ * empty secret Razorpay returns 401 (bad auth) — but ONLY when the key_id
+ * itself is valid.  An entirely fabricated key_id causes a different error.
+ *   - no error thrown     → valid (unlikely with empty secret, treat as valid)
+ *   - statusCode === 401  → key_id accepted, auth failed on empty secret → valid
+ *   - any other error     → key_id invalid / not found
+ *
+ * @param {string} keyId
+ * @returns {Promise<boolean>}
+ */
+export const verifyRazorpayKeyId = async (keyId) => {
+  try {
+    const client = buildClient(keyId, "");
+    await client.orders.all({ count: 1 });
+    return true;
+  } catch (err) {
+    if (err?.statusCode === 401 || err?.error?.code === "BAD_REQUEST_ERROR") {
+      return true;
+    }
+    return false;
+  }
+};
+
+/**
  * Create a Razorpay order.
  * @param {string} keyId         - Merchant's Razorpay Key ID
  * @param {string} keySecret     - Merchant's Razorpay Key Secret
@@ -66,8 +92,12 @@ export const verifyPaymentSignature = (
  * @param {string}        signature - Value of the X-Razorpay-Signature header
  * @returns {boolean}
  */
-export const verifyWebhookSignature = (rawBody, signature) => {
-  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+export const verifyWebhookSignature = (
+  rawBody,
+  signature,
+  configuredSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+) => {
+  const webhookSecret = configuredSecret;
 
   if (!webhookSecret) {
     throw new Error("RAZORPAY_WEBHOOK_SECRET is not configured");

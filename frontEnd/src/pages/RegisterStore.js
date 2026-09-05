@@ -193,10 +193,127 @@ function RegisterStore() {
             business.
           </p>
 
-          <div className="auth-note">
-            <strong>A space of your own</strong>
-            Your store will have its own identity while TenantCart manages the
-            shared platform infrastructure.
+          <div className="auth-progress">
+            <div className="progress-step progress-step-active">
+              <span>01</span>
+              <div>
+                <strong>Store identity & web address</strong>
+                <small>Set your store name, URL slug, and brand color</small>
+              </div>
+            </div>
+
+            <div className="progress-line" />
+
+            <div className="progress-step">
+              <span>02</span>
+              <div>
+                <strong>Design & product catalog</strong>
+                <small>Choose AI templates and list your products</small>
+              </div>
+            </div>
+
+            <div className="progress-line" />
+
+            <div className="progress-step">
+              <span>03</span>
+              <div>
+                <strong>Accept payments & launch</strong>
+                <small>Connect Razorpay and start accepting orders</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="register-features">
+            <div className="feature-card">
+              <span className="feature-icon">⚡</span>
+              <div>
+                <strong>Instant Storefront Address</strong>
+                <p>Get your own isolated store link at <code>/store/:slug</code></p>
+              </div>
+            </div>
+
+            <div className="feature-card">
+              <span className="feature-icon">🎨</span>
+              <div>
+                <strong>Custom Brand Theme</strong>
+                <p>Personalize brand colors, store policies, and AI templates</p>
+              </div>
+            </div>
+
+            <div className="feature-card">
+              <span className="feature-icon">💳</span>
+              <div>
+                <strong>Integrated Razorpay Payments</strong>
+                <p>Accept UPI, credit/debit cards, net banking & wallets</p>
+              </div>
+            </div>
+
+            <div className="feature-card">
+              <span className="feature-icon">📊</span>
+              <div>
+                <strong>Order & Analytics Hub</strong>
+                <p>Track customer orders, manage discounts, and view growth insights</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="store-quote">
+            <p>
+              &ldquo;Setting up our store on TenantCart took less than 5 minutes. The storefront and checkout worked out of the box.&rdquo;
+            </p>
+            <span>— Verified Merchant Partner</span>
+          </div>
+
+          <div className="platform-badges">
+            <div className="badge-item">
+              <strong>100% Isolated</strong>
+              <span>Multi-Tenant Security</span>
+            </div>
+            <div className="badge-item">
+              <strong>0% Commission</strong>
+              <span>Keep All Earnings</span>
+            </div>
+            <div className="badge-item">
+              <strong>Instant Setup</strong>
+              <span>No Coding Needed</span>
+            </div>
+          </div>
+
+          <div className="what-happens-next">
+            <h3>What happens after registration?</h3>
+            <ul>
+              <li>
+                <span className="step-num">1</span>
+                <div>
+                  <strong>Access Merchant Dashboard</strong>
+                  <p>Manage your inventory, team members, and shipping zones from one unified hub.</p>
+                </div>
+              </li>
+              <li>
+                <span className="step-num">2</span>
+                <div>
+                  <strong>AI Storefront Customization</strong>
+                  <p>Generate or pick prebuilt templates to match your brand style and colors.</p>
+                </div>
+              </li>
+              <li>
+                <span className="step-num">3</span>
+                <div>
+                  <strong>Start Selling Immediately</strong>
+                  <p>Share your store link, enable Razorpay payments, and track customer orders in real time.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div className="security-guarantee">
+            <div className="security-header">
+              <span className="shield-icon">🛡️</span>
+              <strong>Enterprise Security & Data Ownership</strong>
+            </div>
+            <p>
+              Your store data, customer records, and product catalog belong 100% to you. All transactions settle directly to your bank account via Razorpay.
+            </p>
           </div>
         </section>
 

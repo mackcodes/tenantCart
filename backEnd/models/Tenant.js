@@ -136,9 +136,19 @@ const tenantSchema = new mongoose.Schema(
         default: null,
       },
 
+      webhookSecret: {
+        type: String,
+        default: null,
+      },
+
       onboarded: {
         type: Boolean,
         default: false,
+      },
+
+      onboardedAt: {
+        type: Date,
+        default: null,
       },
     },
 
@@ -227,6 +237,12 @@ const tenantSchema = new mongoose.Schema(
         ],
         default: [],
       },
+    },
+
+    markets: {
+      currency: { type: String, default: "INR" },
+      language: { type: String, default: "en" },
+      timezone: { type: String, default: "Asia/Kolkata" },
     },
 
     emailVerified: {
