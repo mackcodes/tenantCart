@@ -975,6 +975,64 @@
   border-color: #26362e;
 }
 
+.rz-copy-fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rz-copy-field {
+  display: grid;
+  gap: 6px;
+  color: #4e5b53;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rz-copy-field__control {
+  display: flex;
+  gap: 8px;
+}
+
+.rz-copy-field__control input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #dce3de;
+  border-radius: 7px;
+  background: #f8faf8;
+  color: #24342d;
+  font: inherit;
+  font-weight: 400;
+  padding: 10px 12px;
+}
+
+.rz-copy-button {
+  border: 1px solid #cbd7ce;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #26362e;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 14px;
+}
+
+.rz-copy-button:hover {
+  border-color: #26362e;
+}
+
+.rz-copy-button:disabled {
+  border-color: #dce3de;
+  color: #98a39c;
+  cursor: not-allowed;
+}
+
+.rz-secret-hint {
+  margin: 8px 0 0;
+  color: #68746c;
+  font-size: 12px;
+}
+
 .rz-connect-form__actions {
   display: flex;
   align-items: center;

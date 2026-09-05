@@ -24,6 +24,22 @@ const maskKeyId = (keyId) => {
   return keyId.slice(0, 12) + "••••" + keyId.slice(-4);
 };
 
+const createWebhookSecret = () => {
+  if (!window.crypto?.getRandomValues) {
+    throw new Error("Secure secret generation is not available in this browser.");
+  }
+
+  const bytes = new Uint8Array(24);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const getWebhookUrl = () => {
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL ||
+    "http://localhost:8080/api/v1";
+  return `${apiBaseUrl.replace(/\/api\/v1\/?$/, "")}/api/v1/payments/razorpay/webhook`;
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StepBadge = ({ n }) => (
@@ -34,8 +50,10 @@ const OnboardingGuide = ({ onConnect }) => {
   const [keyId, setKeyId] = useState("");
   const [keySecret, setKeySecret] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
+  const [secretGenerationCount, setSecretGenerationCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState("");
   const [open, setOpen] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -57,6 +75,30 @@ const OnboardingGuide = ({ onConnect }) => {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const copyValue = async (value, label) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(""), 1800);
+    } catch {
+      setError(`Could not copy the ${label}. Please select and copy it manually.`);
+    }
+  };
+
+  const generateWebhookSecret = () => {
+    if (secretGenerationCount >= 3) {
+      return;
+    }
+
+    try {
+      setWebhookSecret(createWebhookSecret());
+      setSecretGenerationCount((count) => count + 1);
+      setError("");
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -110,7 +152,7 @@ const OnboardingGuide = ({ onConnect }) => {
           <div className="rz-step">
             <div className="rz-step__header">
               <StepBadge n={2} />
-              <h3>Copy your API Keys from Razorpay</h3>
+              <h3>Copy your API keys from Razorpay</h3>
             </div>
             <ol className="rz-step__instructions">
               <li>
@@ -133,11 +175,74 @@ const OnboardingGuide = ({ onConnect }) => {
             </ol>
           </div>
 
-          {/* Step 3 — the form */}
+          {/* Step 3 — assisted webhook setup */}
           <div className="rz-step">
             <div className="rz-step__header">
               <StepBadge n={3} />
-              <h3>Paste your API Keys below</h3>
+              <h3>Set up the webhook</h3>
+            </div>
+            <p className="rz-step__body">
+              In Razorpay, open <strong>Settings → Webhooks → Add New Webhook</strong>.
+              Copy the URL and generate a secret below, then paste both values
+              into Razorpay.
+            </p>
+            <div className="rz-copy-fields">
+              <div className="rz-copy-field">
+                <span>Webhook URL</span>
+                <div className="rz-copy-field__control">
+                  <input value={getWebhookUrl()} readOnly aria-label="Webhook URL" />
+                  <button
+                    type="button"
+                    className="rz-copy-button"
+                    onClick={() => copyValue(getWebhookUrl(), "webhook URL")}
+                  >
+                    {copied === "webhook URL" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+              <div className="rz-copy-field">
+                <span>Webhook secret</span>
+                <div className="rz-copy-field__control">
+                  <input
+                    value={webhookSecret}
+                    readOnly
+                    placeholder="Click Generate secret"
+                    aria-label="Webhook secret"
+                  />
+                  <button
+                    type="button"
+                    className="rz-copy-button rz-generate-button"
+                    onClick={generateWebhookSecret}
+                    disabled={secretGenerationCount >= 3}
+                  >
+                    {secretGenerationCount >= 3
+                      ? "Limit reached"
+                      : webhookSecret
+                      ? "Regenerate"
+                      : "Generate secret"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rz-copy-button"
+                    onClick={() => copyValue(webhookSecret, "webhook secret")}
+                    disabled={!webhookSecret}
+                  >
+                    {copied === "webhook secret" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+              <p className="rz-secret-hint">
+                {secretGenerationCount}/3 generations used. Keep this secret
+                private and use the same value in Razorpay.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 4 — the form */}
+          <div className="rz-step">
+            <div className="rz-step__header">
+              <StepBadge n={4} />
+              <h3>Paste your API keys below</h3>
             </div>
             <form className="rz-connect-form" onSubmit={handleSubmit}>
               <label className="rz-connect-form__label">
@@ -168,20 +273,6 @@ const OnboardingGuide = ({ onConnect }) => {
                 />
               </label>
 
-              <label className="rz-connect-form__label" style={{ marginTop: "12px" }}>
-                <span>Razorpay Webhook Secret *</span>
-                <input
-                  type="password"
-                  value={webhookSecret}
-                  onChange={(e) => setWebhookSecret(e.target.value)}
-                  placeholder="Paste the secret from Razorpay Webhooks"
-                  autoComplete="new-password"
-                  spellCheck="false"
-                  className="rz-connect-form__input"
-                  required
-                />
-              </label>
-
               {error && (
                 <p className="rz-error" role="alert">
                   {error}
@@ -204,6 +295,7 @@ const OnboardingGuide = ({ onConnect }) => {
                     setKeyId("");
                     setKeySecret("");
                     setWebhookSecret("");
+                    setSecretGenerationCount(0);
                     setError("");
                   }}
                 >
@@ -220,9 +312,8 @@ const OnboardingGuide = ({ onConnect }) => {
         <span>🔒</span>
         <p>
           Your Key Secret is stored only on the backend and is never returned
-          to the browser. Configure the production webhook separately in your
-          Razorpay Dashboard. Payments settle directly to your linked bank
-          account.
+          to the browser. TenantCart creates and stores the webhook secret for
+          you. Payments settle directly to your linked bank account.
         </p>
       </div>
     </div>
