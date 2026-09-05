@@ -115,7 +115,10 @@ const adminSidebarSection = {
   ],
 };
 
-const DashboardSidebar = () => {
+const DashboardSidebar = ({
+  mobileMenuOpen = false,
+  onNavigate,
+}) => {
   const { user } = useAuth();
 
   const sections =
@@ -124,7 +127,7 @@ const DashboardSidebar = () => {
       : sidebarSections;
 
   return (
-    <aside className="dashboard-sidebar">
+    <aside className={`dashboard-sidebar${mobileMenuOpen ? " dashboard-sidebar--open" : ""}`}>
       <Link
         to={user?.role === "admin" ? "/dashboard/admin/tenants" : "/dashboard"}
         className="dashboard-logo"
@@ -152,6 +155,7 @@ const DashboardSidebar = () => {
                     key={item.path}
                     to={item.path}
                     end={item.end}
+                    onClick={onNavigate}
                     className={({
                       isActive,
                     }) =>

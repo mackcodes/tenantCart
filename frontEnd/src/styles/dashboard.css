@@ -122,6 +122,18 @@
   padding: 0;
 }
 
+.mobile-menu-toggle {
+  display: none;
+  border: 1px solid #d6ded8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26362e;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
 .dashboard-header-store-name {
   position: absolute;
   left: 50%;
@@ -172,6 +184,10 @@
   color: #6f7b73;
   cursor: pointer;
   font-size: 20px;
+}
+
+.mobile-menu {
+  display: none;
 }
 
 .account-settings {
@@ -750,12 +766,24 @@
     display: none;
   }
 
+  .dashboard-sidebar.dashboard-sidebar--open .sidebar-navigation,
+  .dashboard-sidebar.dashboard-sidebar--open .sidebar-footer {
+    display: block;
+  }
+
   .dashboard-header {
+    position: relative;
     padding: 12px 16px;
   }
 
   .mobile-dashboard-logo {
     display: inline-block;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    margin-left: auto;
   }
 
   .dashboard-header-store-name {
@@ -767,6 +795,48 @@
 
   .header-store-link {
     display: none;
+  }
+
+  .mobile-menu {
+    position: absolute;
+    z-index: 20;
+    top: 100%;
+    right: 16px;
+    left: 16px;
+    display: grid;
+    gap: 12px;
+    border: 1px solid #dce3de;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgb(38 54 46 / 14%);
+    padding: 14px;
+  }
+
+  .mobile-menu__tenant-switcher {
+    display: grid;
+    gap: 6px;
+    color: #68746c;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .mobile-menu__tenant-switcher select,
+  .mobile-menu__action {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #d6ded8;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #26362e;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 12px;
+  }
+
+  .mobile-menu__action {
+    display: block;
+    text-decoration: none;
   }
 
   .dashboard-home {

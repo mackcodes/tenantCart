@@ -7,7 +7,10 @@ import {
 
 import { useAuth } from "../../context/AuthContext.js";
 
-const DashboardHeader = () => {
+const DashboardHeader = ({
+  mobileMenuOpen = false,
+  onToggleMobileMenu,
+}) => {
   const [
     profileOpen,
     setProfileOpen,
@@ -62,6 +65,16 @@ const DashboardHeader = () => {
     }
   };
 
+  const mobileStoreAction = !isAdmin && (user?.tenant ? (
+    <Link to="/store-preview" className="mobile-menu__action" onClick={onToggleMobileMenu}>
+      View store
+    </Link>
+  ) : (
+    <Link to="/register-store" className="mobile-menu__action" onClick={onToggleMobileMenu}>
+      Create store
+    </Link>
+  ));
+
   return (
     <header className="dashboard-header">
       <Link
@@ -70,6 +83,16 @@ const DashboardHeader = () => {
       >
         Tenant<span>Cart</span>
       </Link>
+
+      <button
+        type="button"
+        className="mobile-menu-toggle"
+        aria-label={mobileMenuOpen ? "Close dashboard menu" : "Open dashboard menu"}
+        aria-expanded={mobileMenuOpen}
+        onClick={onToggleMobileMenu}
+      >
+        <span aria-hidden="true">{mobileMenuOpen ? "×" : "☰"}</span>
+      </button>
 
       {storeName && !isAdmin && (
         <p className="dashboard-header-store-name">
@@ -190,6 +213,28 @@ const DashboardHeader = () => {
           )}
         </div>
       </div>
+
+      {mobileMenuOpen && !isAdmin && (
+        <div className="mobile-menu">
+          {tenants.length > 1 && (
+            <label className="mobile-menu__tenant-switcher">
+              <span>Current store</span>
+              <select
+                value={user?.tenant?._id || ""}
+                onChange={handleTenantChange}
+                aria-label="Switch store"
+              >
+                {tenants.map(({ tenant }) => (
+                  <option key={tenant._id} value={tenant._id}>
+                    {tenant.storeName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {mobileStoreAction}
+        </div>
+      )}
     </header>
   );
 };

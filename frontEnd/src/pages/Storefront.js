@@ -65,6 +65,7 @@ const StorefrontInner = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cart, setCart] = useState({});
+  const [cartOpen, setCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
@@ -165,7 +166,17 @@ const StorefrontInner = () => {
           <Link to="/" className="site-logo">
             Tenant<span>Cart</span>
           </Link>
-          <AccountNav slug={slug} />
+          <div className="storefront-header-actions">
+            <AccountNav slug={slug} />
+            <button
+              type="button"
+              className="store-preview-cart-count"
+              aria-expanded={cartOpen}
+              onClick={() => setCartOpen((isOpen) => !isOpen)}
+            >
+              Cart ({cartItems.length})
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -263,8 +274,16 @@ const StorefrontInner = () => {
           </section>
         )}
 
-        <aside className="storefront-cart">
+        <aside className={`storefront-cart${cartOpen ? " storefront-cart--open" : ""}`}>
           <h2>Your cart</h2>
+          <button
+            type="button"
+            className="storefront-cart-close"
+            aria-label="Close cart"
+            onClick={() => setCartOpen(false)}
+          >
+            ×
+          </button>
 
           {cartItems.length === 0 ? (
             <p>Your cart is empty.</p>

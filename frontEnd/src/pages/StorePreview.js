@@ -25,6 +25,7 @@ const StorePreview = () => {
   const [cart, setCart] = useState({});
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState("featured");
+  const [cartOpen, setCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -136,7 +137,14 @@ const StorePreview = () => {
           <Link to="/dashboard" className="site-logo">Tenant<span>Cart</span></Link>
           <div className="store-preview-nav-actions">
             <Link to="/dashboard" className="store-preview-nav-link">Back to dashboard</Link>
-            <span className="store-preview-cart-count">Cart ({cartItems.length})</span>
+            <button
+              type="button"
+              className="store-preview-cart-count"
+              aria-expanded={cartOpen}
+              onClick={() => setCartOpen((isOpen) => !isOpen)}
+            >
+              Cart ({cartItems.length})
+            </button>
           </div>
         </nav>
       </header>
@@ -232,8 +240,16 @@ const StorePreview = () => {
           </section>
         )}
 
-        <aside className="storefront-cart">
+        <aside className={`storefront-cart${cartOpen ? " storefront-cart--open" : ""}`}>
           <h2>Your cart</h2>
+          <button
+            type="button"
+            className="storefront-cart-close"
+            aria-label="Close cart"
+            onClick={() => setCartOpen(false)}
+          >
+            ×
+          </button>
           {cartItems.length === 0 ? (
             <p>Your cart is empty.</p>
           ) : (
