@@ -8,6 +8,7 @@ import {
   verifyPaymentSignature,
   verifyWebhookSignature,
   issueRefund,
+  verifyRazorpayKeyId,
 } from "../services/razorpayService.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export const getPaymentSettings = asyncHandler(async (req, res) => {
     keyId: tenantDoc?.razorpay?.keyId || "",
     keySecretSaved: Boolean(tenantDoc?.razorpay?.keySecret),
     onboarded: tenantDoc?.razorpay?.onboarded || false,
+    onboardedAt: tenantDoc?.razorpay?.onboardedAt || null,
   });
 });
 
@@ -261,7 +263,113 @@ export const savePaymentSettings = asyncHandler(async (req, res) => {
   });
 });
 
-// ─── Razorpay Webhook ────────────────────────────────────────────────────────
+// ─── Guided Merchant Onboarding ──────────────────────────────────────────────
+
+/**
+ * POST /api/v1/payments/onboarding/link
+ * Protected, merchant only — save only a Razorpay Key ID (no secret required).
+ *
+ * Body: { razorpayKeyId }
+ *
+ * Validates the format, optionally probes Razorpay to confirm the key is real,
+ * then persists it.  The merchant never touches webhooks or secrets.
+ */
+export const linkRazorpay = asyncHandler(async (req, res) => {
+  const { razorpayKeyId } = req.body;
+
+  if (!razorpayKeyId) {
+    return res.status(400).json({ message: "razorpayKeyId is required" });
+  }
+
+  const trimmed = razorpayKeyId.trim();
+
+  // Basic format check — must start with rzp_test_ or rzp_live_
+  if (!/^rzp_(test|live)_[a-zA-Z0-9]{5,}$/.test(trimmed)) {
+    return res.status(400).json({
+      message:
+        "Invalid Key ID format. It should look like rzp_test_xxxxx or rzp_live_xxxxx.",
+    });
+  }
+
+  // Verify the key is recognised by Razorpay before persisting
+  const isValid = await verifyRazorpayKeyId(trimmed);
+
+  if (!isValid) {
+    return res.status(400).json({
+      message:
+        "We could not verify this Key ID with Razorpay. Please check it and try again.",
+    });
+  }
+
+  const tenantDoc = await Tenant.findById(req.tenantId);
+
+  if (!tenantDoc) {
+    return res.status(404).json({ message: "Store not found" });
+  }
+
+  tenantDoc.razorpay.keyId = trimmed;
+  tenantDoc.razorpay.onboarded = true;
+  tenantDoc.razorpay.onboardedAt = new Date();
+
+  if (tenantDoc.verification?.checks) {
+    tenantDoc.verification.checks.paymentOnboardingComplete = true;
+  }
+
+  await tenantDoc.save();
+
+  await recordTenantAudit({
+    tenantId: req.tenantId,
+    actorId: req.user._id,
+    action: "payment.onboarding.linked",
+    targetType: "payment_settings",
+    request: req,
+  });
+
+  return res.json({
+    message: "Razorpay connected successfully.",
+    keyId: tenantDoc.razorpay.keyId,
+    onboarded: true,
+    onboardedAt: tenantDoc.razorpay.onboardedAt,
+  });
+});
+
+/**
+ * DELETE /api/v1/payments/onboarding/link
+ * Protected, merchant only — disconnect Razorpay from this store.
+ *
+ * Clears keyId, keySecret, onboarded, and onboardedAt.
+ * The merchant can re-connect at any time via POST /onboarding/link.
+ */
+export const disconnectRazorpay = asyncHandler(async (req, res) => {
+  const tenantDoc = await Tenant.findById(req.tenantId);
+
+  if (!tenantDoc) {
+    return res.status(404).json({ message: "Store not found" });
+  }
+
+  tenantDoc.razorpay.keyId = null;
+  tenantDoc.razorpay.keySecret = null;
+  tenantDoc.razorpay.onboarded = false;
+  tenantDoc.razorpay.onboardedAt = null;
+
+  if (tenantDoc.verification?.checks) {
+    tenantDoc.verification.checks.paymentOnboardingComplete = false;
+  }
+
+  await tenantDoc.save();
+
+  await recordTenantAudit({
+    tenantId: req.tenantId,
+    actorId: req.user._id,
+    action: "payment.onboarding.disconnected",
+    targetType: "payment_settings",
+    request: req,
+  });
+
+  return res.json({ message: "Razorpay disconnected successfully." });
+});
+
+
 
 /**
  * POST /api/v1/payments/razorpay/webhook

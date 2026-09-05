@@ -140,6 +140,11 @@ const tenantSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+
+      onboardedAt: {
+        type: Date,
+        default: null,
+      },
     },
 
     shipping: {

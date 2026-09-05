@@ -43,3 +43,26 @@ export const savePaymentSettings = (data) => {
     body: data,
   });
 };
+
+/**
+ * Guided onboarding — link a Razorpay Key ID only (no secret required).
+ * The backend validates and verifies the key with Razorpay before saving.
+ * Body: { razorpayKeyId }
+ * Returns { message, keyId, onboarded, onboardedAt }
+ */
+export const linkRazorpay = (razorpayKeyId) => {
+  return api("/payments/onboarding/link", {
+    method: "POST",
+    body: { razorpayKeyId },
+  });
+};
+
+/**
+ * Guided onboarding — disconnect Razorpay from this store.
+ * Returns { message }
+ */
+export const disconnectRazorpay = () => {
+  return api("/payments/onboarding/link", {
+    method: "DELETE",
+  });
+};

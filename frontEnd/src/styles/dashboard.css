@@ -803,3 +803,409 @@
     width: 100%;
   }
 }
+
+/* ── Razorpay Payment Settings ─────────────────────────────────────────────── */
+
+.rz-settings-section {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 32px 70px;
+  display: grid;
+  gap: 20px;
+}
+
+.rz-loading {
+  color: #68746c;
+  padding: 32px 0;
+}
+
+/* Onboarding card */
+.rz-onboarding-card {
+  border: 1px solid #dce3de;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.rz-onboarding-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 28px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.rz-onboarding-hero__logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #072654;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.rz-onboarding-hero h2 {
+  margin: 0 0 6px;
+  color: #26362e;
+  font-size: 20px;
+}
+
+.rz-onboarding-hero p {
+  margin: 0;
+  color: #68746c;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.rz-get-started-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Steps */
+.rz-onboarding-steps {
+  padding: 24px 28px;
+  display: grid;
+  gap: 28px;
+}
+
+.rz-step__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rz-step__header h3 {
+  margin: 0;
+  color: #26362e;
+  font-size: 16px;
+}
+
+.rz-step-badge {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #26362e;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rz-step__body {
+  margin: 0;
+  color: #4e5b53;
+  font-size: 14px;
+  line-height: 1.6;
+  padding-left: 38px;
+}
+
+.rz-step__instructions {
+  margin: 0;
+  padding-left: 54px;
+  color: #4e5b53;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.rz-link {
+  color: #26362e;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rz-link:hover {
+  color: #bd7147;
+}
+
+.rz-link--external {
+  font-size: 14px;
+}
+
+.rz-code {
+  display: inline-block;
+  border: 1px solid #dce3de;
+  border-radius: 5px;
+  background: #f5f6f4;
+  color: #26362e;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+/* Connect form */
+.rz-connect-form {
+  padding-left: 38px;
+  display: grid;
+  gap: 14px;
+}
+
+.rz-connect-form__label {
+  display: grid;
+  gap: 7px;
+  color: #4e5b53;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rz-connect-form__input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #cfd8d1;
+  border-radius: 8px;
+  color: #26362e;
+  font: inherit;
+  font-size: 14px;
+  padding: 12px 13px;
+  transition: border-color 0.15s;
+}
+
+.rz-connect-form__input:focus {
+  outline: none;
+  border-color: #26362e;
+}
+
+.rz-connect-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.rz-cancel-btn {
+  border: 0;
+  background: transparent;
+  color: #68746c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rz-cancel-btn:hover {
+  color: #26362e;
+}
+
+.rz-error {
+  margin: 0;
+  border-radius: 7px;
+  background: #fdf3f1;
+  color: #a63d2e;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 14px;
+}
+
+/* Onboarding footer */
+.rz-onboarding-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: 1px solid #edf1ee;
+  background: #f9fbf9;
+  padding: 16px 28px;
+}
+
+.rz-onboarding-footer p {
+  margin: 0;
+  color: #68746c;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Connected card */
+.rz-connected-card {
+  border: 1px solid #b6d9bb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.rz-connected-card__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rz-connected-card__logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #072654;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.rz-connected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  background: #eaf5ec;
+  color: #2a7a3b;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 11px;
+  width: fit-content;
+  margin-bottom: 8px;
+}
+
+.rz-connected-badge__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2a7a3b;
+}
+
+.rz-connected-card__keyid {
+  margin: 0;
+  color: #26362e;
+  font-family: "Courier New", monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rz-connected-card__date {
+  margin: 4px 0 0;
+  color: #87918a;
+  font-size: 13px;
+}
+
+/* Status list */
+.rz-connected-card__status-list {
+  border-top: 1px solid #edf1ee;
+  padding-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.rz-status-item {
+  margin: 0;
+  font-size: 14px;
+  padding-left: 22px;
+  position: relative;
+}
+
+.rz-status-item--ok::before {
+  content: "✅";
+  position: absolute;
+  left: 0;
+  font-size: 13px;
+}
+
+/* Connected card actions */
+.rz-connected-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.rz-disconnect-btn {
+  border: 1px solid #d6ded8;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #68746c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 14px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.rz-disconnect-btn:hover {
+  border-color: #a63d2e;
+  color: #a63d2e;
+}
+
+.rz-disconnect-btn--confirm {
+  border-color: #a63d2e;
+  color: #a63d2e;
+  background: #fdf3f1;
+}
+
+.rz-disconnect-btn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.rz-disconnect-warning {
+  margin: 0;
+  border-radius: 8px;
+  background: #fef9ec;
+  border: 1px solid #f0d990;
+  color: #7a5c14;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 12px 15px;
+}
+
+/* Go-live tip */
+.rz-live-tip {
+  border: 1px solid #dce3de;
+  border-radius: 10px;
+  background: #f9fbf9;
+  color: #4e5b53;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px 20px;
+}
+
+.rz-live-tip strong {
+  color: #26362e;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .rz-settings-section {
+    padding: 0 16px 50px;
+  }
+
+  .rz-onboarding-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rz-get-started-btn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .rz-connect-form {
+    padding-left: 0;
+  }
+
+  .rz-connect-form__input {
+    max-width: 100%;
+  }
+
+  .rz-connected-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rz-disconnect-btn {
+    text-align: center;
+  }
+}
+

@@ -6,6 +6,8 @@ import {
   getPaymentSettings,
   savePaymentSettings,
   handleRazorpayWebhook,
+  linkRazorpay,
+  disconnectRazorpay,
 } from "../controllers/paymentController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -30,7 +32,23 @@ router.post(
 router.post("/initiate/:orderId", validateObjectId("orderId"), initiatePayment);
 router.post("/verify", verifyPayment);
 
-// Merchant-only — payment settings in dashboard
+// Merchant-only — guided onboarding (Key ID only, no secret required from merchant)
+router.post(
+  "/onboarding/link",
+  protect,
+  requireTenant,
+  requireTenantRole("owner", "admin"),
+  linkRazorpay
+);
+router.delete(
+  "/onboarding/link",
+  protect,
+  requireTenant,
+  requireTenantRole("owner", "admin"),
+  disconnectRazorpay
+);
+
+// Merchant-only — advanced payment settings in dashboard (Key ID + Secret)
 router.get(
   "/settings",
   protect,
