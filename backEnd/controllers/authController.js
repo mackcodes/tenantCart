@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import { authCookieOptions, clearAuthCookieOptions } from "../config/cookieOptions.js";
 import * as authService from "../services/authService.js";
@@ -359,4 +360,80 @@ export const logout = (
   return res.json({
     message: "Logout successful",
   });
+};
+
+export const updateProfile = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const {
+      name,
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+    } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (name !== undefined) {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        return res.status(400).json({ message: "Name cannot be empty" });
+      }
+      user.name = trimmed;
+    }
+
+    if (newPassword !== undefined) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          message: "Current password is required to set a new password",
+        });
+      }
+
+      const passwordMatches = await bcrypt.compare(
+        currentPassword,
+        user.passwordHash
+      );
+
+      if (!passwordMatches) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ message: "New passwords do not match" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          message: "New password must be at least 6 characters",
+        });
+      }
+
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
+      user.passwordChangedAt = new Date();
+    }
+
+    await user.save();
+
+    const token = authService.signToken(user);
+    res.cookie("tenantcart_token", token, authCookieOptions);
+
+    return res.json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };

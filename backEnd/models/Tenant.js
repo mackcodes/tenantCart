@@ -234,6 +234,12 @@ const tenantSchema = new mongoose.Schema(
       },
     },
 
+    markets: {
+      currency: { type: String, default: "INR" },
+      language: { type: String, default: "en" },
+      timezone: { type: String, default: "Asia/Kolkata" },
+    },
+
     emailVerified: {
   type: Boolean,
   default: false,

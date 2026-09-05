@@ -74,7 +74,10 @@ export const initiatePayment = asyncHandler(async (req, res) => {
   // Fetch tenant Razorpay credentials
   const tenant = await Tenant.findById(order.tenant);
 
-  if (!tenant?.razorpay?.keyId || !tenant?.razorpay?.keySecret) {
+  const keyId = tenant?.razorpay?.keyId;
+  const keySecret = tenant?.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
     return res.status(400).json({
       message:
         "This store has not configured online payments yet. Please contact the store.",
@@ -84,8 +87,8 @@ export const initiatePayment = asyncHandler(async (req, res) => {
   const amountInPaise = Math.round(order.totalAmount * 100);
 
   const razorpayOrder = await createRazorpayOrder(
-    tenant.razorpay.keyId,
-    tenant.razorpay.keySecret,
+    keyId,
+    keySecret,
     amountInPaise,
     "INR",
     order._id.toString()
@@ -165,14 +168,16 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   // Fetch key secret to verify signature
   const tenant = await Tenant.findById(order.tenant);
 
-  if (!tenant?.razorpay?.keySecret) {
+  const keySecret = tenant?.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keySecret) {
     return res.status(400).json({
       message: "Unable to verify payment — store credentials not found",
     });
   }
 
   const isValid = verifyPaymentSignature(
-    tenant.razorpay.keySecret,
+    keySecret,
     razorpayOrderId,
     razorpayPaymentId,
     razorpaySignature
@@ -402,7 +407,13 @@ export const handleRazorpayWebhook = asyncHandler(async (req, res) => {
   }
 
   if (!isValid) {
-    return res.status(400).json({ message: "Invalid webhook signature" });
+    // Log clearly so the failure shows in terminal and ngrok inspector,
+    // but return 200 to stop Razorpay retry storms.  The payload is ignored.
+    console.warn(
+      "Razorpay webhook: invalid signature — payload ignored",
+      new Date().toISOString()
+    );
+    return res.json({ received: true });
   }
 
   // Parse the raw body now that signature is confirmed
