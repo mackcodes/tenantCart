@@ -8,6 +8,7 @@ import {
   deleteProduct,
   getMerchantProducts,
 } from "../services/productService.js";
+import { resolveAssetUrl } from "../services/api.js";
 
 import ProductForm from "./ProductForm.js";
 
@@ -298,8 +299,10 @@ const MerchantProducts = () => {
                         ) ? (
                           <img
                             src={
-                              product.imageUrl ||
-                              product.images?.[0]
+                              resolveAssetUrl(
+                                product.imageUrl ||
+                                product.images?.[0]
+                              )
                             }
                             alt=""
                             className="product-cell__image"

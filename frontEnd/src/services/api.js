@@ -3,6 +3,26 @@ const BASE_URL =
   process.env.REACT_APP_API_URL ||
   "http://localhost:8080/api/v1";
 
+const API_ORIGIN = new URL(BASE_URL).origin;
+
+export const resolveAssetUrl = (assetUrl) => {
+  if (!assetUrl) {
+    return assetUrl;
+  }
+
+  try {
+    const parsedUrl = new URL(assetUrl, API_ORIGIN);
+
+    if (parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1") {
+      return `${API_ORIGIN}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+    }
+
+    return parsedUrl.href;
+  } catch {
+    return assetUrl;
+  }
+};
+
 const request = async (
   path,
   {

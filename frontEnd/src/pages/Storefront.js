@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import { getStorefront } from "../services/storefrontService.js";
+import { resolveAssetUrl } from "../services/api.js";
 import { getStorefrontTheme } from "../utils/storefrontTheme.js";
 import {
   CustomerAuthProvider,
@@ -179,7 +180,7 @@ const StorefrontInner = () => {
               key={index}
               href={banner.link || undefined}
               className="storefront-promo-banner"
-              style={banner.imageUrl ? { backgroundImage: `url(${banner.imageUrl})` } : undefined}
+              style={banner.imageUrl ? { backgroundImage: `url(${resolveAssetUrl(banner.imageUrl)})` } : undefined}
             >
               <div className="storefront-promo-banner__text">
                 {banner.title && <h3>{banner.title}</h3>}
@@ -231,7 +232,7 @@ const StorefrontInner = () => {
               <div key={product._id} className={`storefront-card storefront-card--${theme.productCardStyle}`}>
                 {product.images?.[0] ? (
                   <img
-                    src={product.images[0]}
+                    src={resolveAssetUrl(product.images[0])}
                     alt=""
                     className="storefront-card__image"
                   />

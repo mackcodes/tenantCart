@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getMyStorefrontPreview } from "../services/storefrontService.js";
+import { resolveAssetUrl } from "../services/api.js";
 import { getStorefrontTheme } from "../utils/storefrontTheme.js";
 
 import "./LandingPage.css";
@@ -200,7 +201,7 @@ const StorePreview = () => {
               <div key={product._id} className={`storefront-card storefront-card--${theme.productCardStyle}`}>
                 {product.images?.[0] ? (
                   <img
-                    src={product.images[0]}
+                    src={resolveAssetUrl(product.images[0])}
                     alt=""
                     className="storefront-card__image"
                   />
