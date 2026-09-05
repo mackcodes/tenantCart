@@ -11,6 +11,7 @@ import {
   requireTenant,
   requireTenantRole,
 } from "../middlewares/tenantMiddleware.js";
+import { resolveStoreSlug } from "../middlewares/resolveStoreSlug.js";
 
 const router = express.Router();
 
@@ -22,10 +23,11 @@ router.get(
   getStorefrontPreview
 );
 
-router.get("/:slug", getStorefront);
+router.get("/:slug?", resolveStoreSlug, getStorefront);
 
 router.get(
-  "/:slug/products/:productSlug",
+  "/:slug?/products/:productSlug",
+  resolveStoreSlug,
   getPublicProduct
 );
 

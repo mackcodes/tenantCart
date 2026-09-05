@@ -12,6 +12,7 @@ import {
 import { checkout } from "../services/orderService.js";
 import { initiatePayment, verifyPayment } from "../services/paymentService.js";
 import { getStorefront } from "../services/storefrontService.js";
+import { validateDiscountCode } from "../services/discountService.js";
 
 import "./LandingPage.css";
 import "./Storefront.css";
@@ -72,6 +73,9 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderPlaced, setOrderPlaced] = useState(null);
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
 
   useEffect(() => {
     const loadShipping = async () => {
@@ -109,7 +113,23 @@ const Checkout = () => {
     : cartTotal >= Number(shipping.freeShippingThreshold || 0)
       ? 0
       : Number(shipping.flatRate || 0);
-  const checkoutTotal = cartTotal + shippingAmount;
+  const discountAmount = appliedDiscount?.discountAmount || 0;
+  const checkoutTotal = Math.max(0, cartTotal - discountAmount) + shippingAmount;
+
+  const handleApplyDiscount = async () => {
+    setError("");
+    setApplyingDiscount(true);
+
+    try {
+      const result = await validateDiscountCode(slug, discountCodeInput, cartTotal);
+      setAppliedDiscount(result);
+    } catch (requestError) {
+      setAppliedDiscount(null);
+      setError(requestError.message || "Unable to apply discount code");
+    } finally {
+      setApplyingDiscount(false);
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -146,6 +166,7 @@ const Checkout = () => {
           country: form.country,
         },
         shippingMethod,
+        discountCode: appliedDiscount?.code || undefined,
         items: cartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -301,6 +322,44 @@ const Checkout = () => {
                   {shippingAmount === 0 ? "Free" : formatCurrency(shippingAmount)}
                 </span>
               </div>
+
+              <div className="checkout-discount">
+                <input
+                  type="text"
+                  placeholder="Discount code"
+                  value={discountCodeInput}
+                  onChange={(event) => setDiscountCodeInput(event.target.value)}
+                  disabled={Boolean(appliedDiscount)}
+                />
+                {appliedDiscount ? (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                      setAppliedDiscount(null);
+                      setDiscountCodeInput("");
+                    }}
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={!discountCodeInput.trim() || applyingDiscount}
+                    onClick={handleApplyDiscount}
+                  >
+                    {applyingDiscount ? "Applying..." : "Apply"}
+                  </button>
+                )}
+              </div>
+
+              {discountAmount > 0 && (
+                <div className="storefront-cart-total">
+                  <span>Discount ({appliedDiscount.code})</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
+                </div>
+              )}
 
               <div className="storefront-cart-total">
                 <strong>Total</strong>

@@ -1,9 +1,11 @@
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import Tenant from "../models/Tenant.js";
+import Customer from "../models/Customer.js";
 import crypto from "node:crypto";
 import asyncHandler from "../utils/asyncHandler.js";
 import { recordTenantAudit } from "../services/tenantAuditService.js";
+import { consumeDiscountUsage, resolveDiscount } from "../services/discountService.js";
 
 const normalizeSlug = (value) => value?.trim().toLowerCase();
 
@@ -36,6 +38,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     customerPhone,
     shippingAddress,
     shippingMethod = "delivery",
+    discountCode,
     items,
   } = req.body;
 
@@ -115,6 +118,20 @@ export const createOrder = asyncHandler(async (req, res) => {
     totalAmount += product.price * quantity;
   }
 
+  let appliedDiscount = null;
+  let discountAmount = 0;
+
+  if (discountCode) {
+    const resolved = await resolveDiscount({
+      tenantId: tenant._id,
+      code: discountCode,
+      subtotal: totalAmount,
+    });
+
+    appliedDiscount = resolved.discount;
+    discountAmount = resolved.discountAmount;
+  }
+
   const stockUpdates = [];
 
   try {
@@ -151,13 +168,33 @@ export const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  if (appliedDiscount) {
+    try {
+      await consumeDiscountUsage(appliedDiscount._id, appliedDiscount.maxUses);
+    } catch (discountError) {
+      for (const update of stockUpdates) {
+        await Product.updateOne(
+          { _id: update.productId },
+          { $inc: { stock: update.quantity } }
+        );
+      }
+
+      return res.status(discountError.statusCode || 409).json({
+        message: discountError.message || "Unable to apply discount",
+      });
+    }
+  }
+
   const shippingSettings = tenant.shipping || {};
   const shippingAmount = shippingMethod === "pickup"
     ? 0
     : totalAmount >= Number(shippingSettings.freeShippingThreshold ?? 1000)
       ? 0
       : Number(shippingSettings.flatRate ?? 0);
-  const orderTotal = totalAmount + shippingAmount;
+  const orderTotal = Math.max(
+    0,
+    totalAmount - (discountAmount || 0)
+  ) + shippingAmount;
   const resolvedShippingAddress = shippingMethod === "pickup"
     ? {
       line1: tenant.address?.line1 || "Store pickup",
@@ -187,10 +224,29 @@ export const createOrder = asyncHandler(async (req, res) => {
     items: orderItems,
     shippingMethod,
     shippingAmount,
+    discountCode: appliedDiscount ? appliedDiscount.code : "",
+    discountAmount: discountAmount || 0,
     totalAmount: orderTotal,
     status: "pending",
     checkoutTokenHash: hashCheckoutToken(paymentToken),
   });
+
+  await Customer.findOneAndUpdate(
+    { tenant: tenant._id, email: customerEmail.trim().toLowerCase() },
+    {
+      $set: {
+        name: customerName.trim(),
+        phone: customerPhone?.trim() || "",
+        lastAddress: order.shippingAddress,
+        lastOrderAt: new Date(),
+      },
+      $inc: {
+        totalOrders: 1,
+        totalSpent: orderTotal,
+      },
+    },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
 
   const orderResponse = order.toObject();
   delete orderResponse.checkoutTokenHash;
