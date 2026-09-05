@@ -168,6 +168,67 @@ const tenantSchema = new mongoose.Schema(
       },
     },
 
+    policies: {
+      refundPolicy: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 5000,
+      },
+
+      privacyPolicy: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 5000,
+      },
+
+      termsOfService: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 5000,
+      },
+
+      shippingPolicy: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 5000,
+      },
+
+      cancellationPolicy: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 5000,
+      },
+    },
+
+    content: {
+      banners: {
+        type: [
+          {
+            imageUrl: { type: String, trim: true, default: "" },
+            title: { type: String, trim: true, maxlength: 120, default: "" },
+            subtitle: { type: String, trim: true, maxlength: 200, default: "" },
+            link: { type: String, trim: true, default: "" },
+          },
+        ],
+        default: [],
+      },
+
+      faqs: {
+        type: [
+          {
+            question: { type: String, trim: true, maxlength: 200, required: true },
+            answer: { type: String, trim: true, maxlength: 2000, required: true },
+          },
+        ],
+        default: [],
+      },
+    },
+
     emailVerified: {
   type: Boolean,
   default: false,

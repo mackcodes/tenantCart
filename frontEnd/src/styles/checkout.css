@@ -8,6 +8,22 @@
   padding: 16px;
 }
 
+.checkout-discount {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.checkout-discount input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(36, 52, 45, 0.14);
+  border-radius: 7px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
 .checkout-shipping-method legend {
   padding: 0 6px;
   color: #24342d;

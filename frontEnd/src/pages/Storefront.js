@@ -141,6 +141,24 @@ const Storefront = () => {
         <p className="storefront-banner">Free shipping on orders over ₹1,000</p>
       )}
 
+      {store.content?.banners?.length > 0 && (
+        <section className="storefront-promo-banners">
+          {store.content.banners.map((banner, index) => (
+            <a
+              key={index}
+              href={banner.link || undefined}
+              className="storefront-promo-banner"
+              style={banner.imageUrl ? { backgroundImage: `url(${banner.imageUrl})` } : undefined}
+            >
+              <div className="storefront-promo-banner__text">
+                {banner.title && <h3>{banner.title}</h3>}
+                {banner.subtitle && <p>{banner.subtitle}</p>}
+              </div>
+            </a>
+          ))}
+        </section>
+      )}
+
       <section className="storefront-header">
         <p className="eyebrow">{store.category}</p>
         <h1>{store.storeName}</h1>
@@ -252,6 +270,42 @@ const Storefront = () => {
           )}
         </aside>
       </div>
+
+      {store.content?.faqs?.length > 0 && (
+        <section className="storefront-faqs">
+          <h2>Frequently asked questions</h2>
+          {store.content.faqs.map((faq, index) => (
+            <details key={index} className="storefront-faq">
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </section>
+      )}
+
+      {(store.policies?.refundPolicy ||
+        store.policies?.shippingPolicy ||
+        store.policies?.cancellationPolicy ||
+        store.policies?.privacyPolicy ||
+        store.policies?.termsOfService) && (
+        <footer className="storefront-policies">
+          {store.policies.shippingPolicy && (
+            <details><summary>Shipping policy</summary><p>{store.policies.shippingPolicy}</p></details>
+          )}
+          {store.policies.refundPolicy && (
+            <details><summary>Refund policy</summary><p>{store.policies.refundPolicy}</p></details>
+          )}
+          {store.policies.cancellationPolicy && (
+            <details><summary>Cancellation policy</summary><p>{store.policies.cancellationPolicy}</p></details>
+          )}
+          {store.policies.privacyPolicy && (
+            <details><summary>Privacy policy</summary><p>{store.policies.privacyPolicy}</p></details>
+          )}
+          {store.policies.termsOfService && (
+            <details><summary>Terms of service</summary><p>{store.policies.termsOfService}</p></details>
+          )}
+        </footer>
+      )}
     </div>
   );
 };

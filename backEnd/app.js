@@ -13,9 +13,16 @@ import templateRoutes from "./routes/templateRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import tenantRoutes from "./routes/tenantRoutes.js";
 import shippingRoutes from "./routes/shippingRoutes.js";
+import discountRoutes from "./routes/discountRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
+import policyRoutes from "./routes/policyRoutes.js";
+import contentRoutes from "./routes/contentRoutes.js";
 dotenv.config();
 
 const app = express();
+
+// Trust the first proxy hop so req.hostname reflects the real client host (needed for subdomain-based tenant resolution)
+app.set("trust proxy", 1);
 
 app.use(
   cors({
@@ -55,6 +62,10 @@ app.use("/api/v1/templates", templateRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/tenants", tenantRoutes);
 app.use("/api/v1/shipping", shippingRoutes);
+app.use("/api/v1/discounts", discountRoutes);
+app.use("/api/v1/customers", customerRoutes);
+app.use("/api/v1/policies", policyRoutes);
+app.use("/api/v1/content", contentRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

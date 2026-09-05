@@ -39,6 +39,10 @@ import PaymentSettings from "./pages/PaymentSettings.js";
 import AccountSettings from "./pages/AccountSettings.js";
 import ShippingSettings from "./pages/ShippingSettings.js";
 import DashboardTeam from "./pages/DashboardTeam.js";
+import StorePolicies from "./pages/StorePolicies.js";
+import DashboardCustomers from "./pages/DashboardCustomers.js";
+import Discounts from "./pages/Discounts.js";
+import DashboardContent from "./pages/DashboardContent.js";
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -289,7 +293,7 @@ function AppRoutes() {
         path="/dashboard/customers"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Customers" />
+            <DashboardCustomers />
           </ProtectedRoute>
         }
       />
@@ -307,7 +311,7 @@ function AppRoutes() {
         path="/dashboard/discounts"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Discounts" />
+            <Discounts />
           </ProtectedRoute>
         }
       />
@@ -316,7 +320,7 @@ function AppRoutes() {
         path="/dashboard/content"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Content" />
+            <DashboardContent />
           </ProtectedRoute>
         }
       />
@@ -385,7 +389,7 @@ function AppRoutes() {
         path="/dashboard/settings/policies"
         element={
           <ProtectedRoute>
-            <ComingSoon title="Store policies" />
+            <StorePolicies />
           </ProtectedRoute>
         }
       />

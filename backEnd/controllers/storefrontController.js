@@ -16,7 +16,7 @@ const findPublicTenant = async (slug) => {
     slug: normalizedSlug,
     status: "approved",
   }).select(
-    "_id storeName slug description category branding status shipping"
+    "_id storeName slug description category branding status shipping policies content"
   );
 };
 
@@ -52,7 +52,7 @@ export const getStorefrontPreview = asyncHandler(
 export const getStorefront = asyncHandler(
   async (req, res) => {
     const tenant = await findPublicTenant(
-      req.params.slug
+      req.storeSlug ?? req.params.slug
     );
 
     if (!tenant) {
@@ -81,7 +81,7 @@ export const getStorefront = asyncHandler(
 export const getPublicProduct = asyncHandler(
   async (req, res) => {
     const tenant = await findPublicTenant(
-      req.params.slug
+      req.storeSlug ?? req.params.slug
     );
 
     if (!tenant) {

@@ -80,6 +80,19 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
 
+    discountCode: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+    },
+
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     items: {
       type: [orderItemSchema],
       required: true,
