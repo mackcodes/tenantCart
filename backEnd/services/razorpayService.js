@@ -56,3 +56,53 @@ export const verifyPaymentSignature = (
 
   return expectedSignature === signature;
 };
+
+/**
+ * Verify the HMAC-SHA256 signature on an inbound Razorpay webhook request.
+ * Uses the platform-level webhook secret (RAZORPAY_WEBHOOK_SECRET), not a
+ * per-merchant key, because Razorpay sends webhooks from its own servers.
+ *
+ * @param {Buffer|string} rawBody   - The raw request body (must not be JSON-parsed first)
+ * @param {string}        signature - Value of the X-Razorpay-Signature header
+ * @returns {boolean}
+ */
+export const verifyWebhookSignature = (rawBody, signature) => {
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    throw new Error("RAZORPAY_WEBHOOK_SECRET is not configured");
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  return expectedSignature === signature;
+};
+
+/**
+ * Issue a refund for a captured Razorpay payment using the merchant's credentials.
+ *
+ * @param {string} keyId          - Merchant's Razorpay Key ID
+ * @param {string} keySecret      - Merchant's Razorpay Key Secret
+ * @param {string} paymentId      - razorpay_payment_id to refund
+ * @param {number} [amountInPaise] - Amount to refund in paise; omit for full refund
+ * @returns {Promise<object>}     - Razorpay refund object
+ */
+export const issueRefund = async (
+  keyId,
+  keySecret,
+  paymentId,
+  amountInPaise
+) => {
+  const client = buildClient(keyId, keySecret);
+
+  const options = {};
+
+  if (amountInPaise !== undefined && amountInPaise !== null) {
+    options.amount = amountInPaise;
+  }
+
+  return client.payments.refund(paymentId, options);
+};

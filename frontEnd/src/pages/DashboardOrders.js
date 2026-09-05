@@ -7,6 +7,7 @@ import React, {
 import {
   getMerchantOrders,
   updateOrderStatus,
+  refundOrder,
 } from "../services/orderService.js";
 
 const statusFilters = [
@@ -16,6 +17,7 @@ const statusFilters = [
   "shipped",
   "delivered",
   "cancelled",
+  "refunded",
 ];
 
 const nextStatusOptions = [
@@ -54,6 +56,7 @@ const DashboardOrders = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [refundingOrderId, setRefundingOrderId] = useState(null);
 
   const loadOrders = async () => {
     try {
@@ -104,6 +107,31 @@ const DashboardOrders = () => {
       setError(requestError.message || "Unable to update order");
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const handleRefund = async (order) => {
+    const confirmed = window.confirm(
+      `Issue a full refund of ${formatCurrency(order.totalAmount)} for order by ${order.customerName}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setRefundingOrderId(order._id);
+      setError("");
+      setNotice("");
+
+      await refundOrder(order._id);
+      await loadOrders();
+
+      setNotice(`Refund issued for order by ${order.customerName}`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to issue refund");
+    } finally {
+      setRefundingOrderId(null);
     }
   };
 
@@ -224,22 +252,37 @@ const DashboardOrders = () => {
                             : "View"}
                         </button>
 
-                        <select
-                          value={order.status}
-                          disabled={updatingOrderId === order._id}
-                          onChange={(event) =>
-                            handleStatusChange(
-                              order,
-                              event.target.value
-                            )
-                          }
-                        >
-                          {nextStatusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
+                        {["paid", "shipped"].includes(order.status) && (
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            disabled={refundingOrderId === order._id}
+                            onClick={() => handleRefund(order)}
+                          >
+                            {refundingOrderId === order._id
+                              ? "Refunding…"
+                              : "Refund"}
+                          </button>
+                        )}
+
+                        {order.status !== "refunded" && (
+                          <select
+                            value={order.status}
+                            disabled={updatingOrderId === order._id}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                order,
+                                event.target.value
+                              )
+                            }
+                          >
+                            {nextStatusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -290,6 +333,23 @@ const DashboardOrders = () => {
                               ))}
                             </ul>
                           </div>
+
+                          {order.status === "refunded" && (
+                            <div>
+                              <strong>Refund details</strong>
+
+                              <p>
+                                Amount refunded:{" "}
+                                {formatCurrency(order.refundedAmount)}
+                              </p>
+
+                              {order.refundId && (
+                                <p style={{ fontSize: "0.8em", color: "#666" }}>
+                                  Refund ID: {order.refundId}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

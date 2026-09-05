@@ -6,6 +6,8 @@ import { recordTenantAudit } from "../services/tenantAuditService.js";
 import {
   createRazorpayOrder,
   verifyPaymentSignature,
+  verifyWebhookSignature,
+  issueRefund,
 } from "../services/razorpayService.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -256,5 +258,218 @@ export const savePaymentSettings = asyncHandler(async (req, res) => {
     message: "Payment settings saved successfully",
     keyId: tenantDoc.razorpay.keyId,
     onboarded: true,
+  });
+});
+
+// ─── Razorpay Webhook ────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/payments/razorpay/webhook
+ * Public — called by Razorpay's servers for asynchronous payment events.
+ *
+ * This endpoint MUST receive the raw (un-parsed) request body so the HMAC
+ * digest can be computed over the exact bytes Razorpay signed.  The route is
+ * mounted before the global express.json() middleware in app.js.
+ *
+ * Handles:
+ *   payment.captured  → marks order paid (idempotent)
+ *   order.paid        → alias for the above (some Razorpay plans emit this)
+ *   payment.failed    → leaves the order pending so the customer can retry
+ */
+export const handleRazorpayWebhook = asyncHandler(async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+
+  if (!signature) {
+    return res.status(400).json({ message: "Missing webhook signature" });
+  }
+
+  // req.body is a Buffer when the route uses express.raw()
+  let isValid;
+
+  try {
+    isValid = verifyWebhookSignature(req.body, signature);
+  } catch (configError) {
+    console.error("Webhook config error:", configError.message);
+    return res.status(500).json({ message: "Webhook not configured" });
+  }
+
+  if (!isValid) {
+    return res.status(400).json({ message: "Invalid webhook signature" });
+  }
+
+  // Parse the raw body now that signature is confirmed
+  let event;
+
+  try {
+    event = JSON.parse(req.body.toString("utf8"));
+  } catch {
+    return res.status(400).json({ message: "Malformed webhook payload" });
+  }
+
+  const { event: eventName, payload } = event;
+
+  if (eventName === "payment.captured" || eventName === "order.paid") {
+    // Razorpay puts the payment entity inside payload.payment.entity
+    const payment = payload?.payment?.entity;
+
+    if (!payment) {
+      // Unexpected payload shape — acknowledge so Razorpay doesn't retry
+      return res.json({ received: true });
+    }
+
+    const razorpayOrderId = payment.order_id;
+    const paymentId = payment.id;
+
+    if (!razorpayOrderId || !paymentId) {
+      return res.json({ received: true });
+    }
+
+    const order = await Order.findOne({ razorpayOrderId });
+
+    if (!order) {
+      // Not our order (multi-merchant edge case or test event) — acknowledge
+      return res.json({ received: true });
+    }
+
+    // Idempotency guard — do nothing if already paid
+    if (order.status !== "paid") {
+      order.status = "paid";
+      order.paymentRef = paymentId;
+      await order.save();
+    }
+  } else if (eventName === "payment.failed") {
+    // We intentionally leave the order as "pending" so the customer can retry.
+    // Log for observability only.
+    const payment = payload?.payment?.entity;
+    console.warn(
+      "Razorpay payment.failed webhook received:",
+      payment?.order_id,
+      payment?.id,
+      payment?.error_description
+    );
+  }
+
+  // Always acknowledge — Razorpay will retry on non-2xx responses
+  return res.json({ received: true });
+});
+
+// ─── Merchant Refund ─────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/orders/:id/refund
+ * Protected, merchant only (owner or admin).
+ *
+ * Body (optional):
+ *   { amount: <number in rupees> }   — omit for a full refund
+ *
+ * Validates:
+ *   - order belongs to the authenticated tenant
+ *   - order is in "paid" or "shipped" status (delivered orders cannot be
+ *     auto-refunded without manual review)
+ *   - tenant has valid Razorpay credentials
+ *   - a paymentRef (Razorpay payment ID) is recorded on the order
+ */
+export const refundOrder = asyncHandler(async (req, res) => {
+  const tenantId = req.tenantId;
+  const { id: orderId } = req.params;
+
+  const order = await Order.findOne({ _id: orderId, tenant: tenantId });
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  const refundableStatuses = ["paid", "shipped"];
+
+  if (!refundableStatuses.includes(order.status)) {
+    return res.status(400).json({
+      message: `Only paid or shipped orders can be refunded (current status: ${order.status})`,
+    });
+  }
+
+  if (!order.paymentRef) {
+    return res.status(400).json({
+      message:
+        "No Razorpay payment reference found on this order. Refund must be issued manually.",
+    });
+  }
+
+  const tenant = await Tenant.findById(tenantId).select("razorpay");
+
+  if (!tenant?.razorpay?.keyId || !tenant?.razorpay?.keySecret) {
+    return res.status(400).json({
+      message: "Store payment credentials are not configured",
+    });
+  }
+
+  const { amount: amountInRupees } = req.body;
+
+  let amountInPaise;
+
+  if (amountInRupees !== undefined && amountInRupees !== null) {
+    const parsed = Number(amountInRupees);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return res.status(400).json({
+        message: "amount must be a positive number (in rupees)",
+      });
+    }
+
+    if (parsed > order.totalAmount) {
+      return res.status(400).json({
+        message: `Refund amount (₹${parsed}) cannot exceed order total (₹${order.totalAmount})`,
+      });
+    }
+
+    amountInPaise = Math.round(parsed * 100);
+  }
+  // If amountInRupees is omitted, amountInPaise stays undefined → full refund
+
+  let razorpayRefund;
+
+  try {
+    razorpayRefund = await issueRefund(
+      tenant.razorpay.keyId,
+      tenant.razorpay.keySecret,
+      order.paymentRef,
+      amountInPaise
+    );
+  } catch (razorpayError) {
+    console.error("Razorpay refund error:", razorpayError);
+    return res.status(502).json({
+      message:
+        razorpayError?.error?.description ||
+        "Razorpay refund request failed. Please try again or issue the refund from the Razorpay dashboard.",
+    });
+  }
+
+  const refundedRupees = razorpayRefund.amount / 100;
+
+  order.status = "refunded";
+  order.refundId = razorpayRefund.id;
+  order.refundedAmount = refundedRupees;
+  await order.save();
+
+  await recordTenantAudit({
+    tenantId,
+    actorId: req.user._id,
+    action: "order.refunded",
+    targetType: "order",
+    targetId: order._id,
+    metadata: {
+      refundId: razorpayRefund.id,
+      refundedAmount: refundedRupees,
+    },
+    request: req,
+  });
+
+  return res.json({
+    message: "Refund issued successfully",
+    order: {
+      id: order._id,
+      status: order.status,
+      refundId: order.refundId,
+      refundedAmount: order.refundedAmount,
+    },
   });
 });

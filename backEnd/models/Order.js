@@ -103,6 +103,7 @@ const orderSchema = new mongoose.Schema(
         "shipped",
         "delivered",
         "cancelled",
+        "refunded",
       ],
       default: "pending",
     },
@@ -114,6 +115,16 @@ const orderSchema = new mongoose.Schema(
 
     paymentRef: {
       type: String,
+      default: null,
+    },
+
+    refundId: {
+      type: String,
+      default: null,
+    },
+
+    refundedAmount: {
+      type: Number,
       default: null,
     },
 

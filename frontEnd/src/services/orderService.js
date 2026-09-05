@@ -23,3 +23,15 @@ export const checkout = (slug, orderData) => {
     body: orderData,
   });
 };
+
+/**
+ * Issue a full or partial refund for an order.
+ * @param {string} orderId     - The order's MongoDB _id
+ * @param {number} [amount]    - Amount in rupees; omit for a full refund
+ */
+export const refundOrder = (orderId, amount) => {
+  return api(`/orders/${orderId}/refund`, {
+    method: "POST",
+    body: amount !== undefined ? { amount } : {},
+  });
+};

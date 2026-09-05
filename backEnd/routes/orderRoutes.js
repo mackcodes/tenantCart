@@ -7,6 +7,8 @@ import {
   updateOrderStatus,
 } from "../controllers/orderController.js";
 
+import { refundOrder } from "../controllers/paymentController.js";
+
 import { protect } from "../middlewares/authMiddleware.js";
 import {
   requireTenant,
@@ -37,6 +39,12 @@ router.patch(
   validateObjectId("id"),
   requireTenantRole("owner", "admin", "manager", "staff"),
   updateOrderStatus
+);
+router.post(
+  "/:id/refund",
+  validateObjectId("id"),
+  requireTenantRole("owner", "admin"),
+  refundOrder
 );
 
 export default router;
