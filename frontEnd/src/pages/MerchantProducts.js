@@ -150,7 +150,11 @@ const MerchantProducts = () => {
       setNotice("");
 
       await deleteProduct(product._id);
-      await loadProducts();
+      setProducts((currentProducts) =>
+        currentProducts.filter(
+          (currentProduct) => currentProduct._id !== product._id
+        )
+      );
 
       setNotice(
         "Product deleted successfully"
