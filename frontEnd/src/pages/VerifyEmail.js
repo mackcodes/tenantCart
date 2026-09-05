@@ -23,6 +23,7 @@ function VerifyEmail() {
       try {
         const data = await verifyEmail(token);
 
+        sessionStorage.removeItem("tenantcart_verification_email");
         setMessage(data.message || "Email verified successfully");
         setStatus("success");
       } catch (error) {
@@ -63,6 +64,12 @@ function VerifyEmail() {
               <>
                 <p className="auth-error" role="alert">
                   {message}
+                </p>
+
+                <p>
+                  This link may have expired or been replaced by a newer
+                  verification email. Request a new link and use the latest
+                  email you receive.
                 </p>
 
                 <Link to="/resend-verification" className="auth-submit">

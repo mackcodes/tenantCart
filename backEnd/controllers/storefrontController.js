@@ -23,7 +23,7 @@ const findPublicTenant = async (slug) => {
 export const getStorefrontPreview = asyncHandler(
   async (req, res) => {
     const tenant = await Tenant.findById(req.tenantId).select(
-      "_id storeName slug description category branding status address shipping"
+      "_id storeName slug description category branding status address shipping policies content"
     );
 
     if (!tenant) {

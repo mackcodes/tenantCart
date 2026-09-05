@@ -50,6 +50,7 @@ function RegisterAccount() {
     try {
       const data = await registerAccount(form);
 
+      sessionStorage.setItem("tenantcart_verification_email", form.email.trim().toLowerCase());
       setUser(data.user);
 
       navigate("/dashboard", {
