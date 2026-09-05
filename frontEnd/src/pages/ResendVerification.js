@@ -6,7 +6,9 @@ import { resendVerificationEmail } from "../services/authService.js";
 import "./Auth.css";
 
 function ResendVerification() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => (
+    sessionStorage.getItem("tenantcart_verification_email") || ""
+  ));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

@@ -214,9 +214,9 @@ const CustomerStoreLayout = ({ children }) => {
  * Redirects to /store/:slug/account if the customer is not authenticated.
  * Used to guard the My Orders page.
  */
-const CustomerRoute = ({ children }) => {
+const CustomerRoute = ({ children, slug, storeName }) => {
   const { customer, loading } = useCustomerAuth();
-  const { slug } = useParams();
+  const { slug: routeSlug } = useParams();
 
   if (loading) {
     return (
@@ -230,7 +230,14 @@ const CustomerRoute = ({ children }) => {
     return <Navigate to={`/store/${slug}/account`} replace />;
   }
 
-  return children;
+  const childProps = {
+    slug: slug || routeSlug,
+    storeName,
+  };
+
+  return React.isValidElement(children)
+    ? React.cloneElement(children, childProps)
+    : children;
 };
 
 function AppRoutes() {

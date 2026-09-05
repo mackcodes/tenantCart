@@ -158,6 +158,24 @@
   font-size: 14px;
 }
 
+.my-orders-back-link {
+  display: inline-block;
+  margin: -20px 0 24px;
+  color: #24342d;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.my-orders-back-link:hover {
+  color: #c76d50;
+}
+
+.my-orders-store-note {
+  color: #68756d;
+  font-size: 14px;
+}
+
 .my-orders-empty {
   margin-top: 48px;
   text-align: center;

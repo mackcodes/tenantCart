@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useCustomerAuth } from "../context/CustomerAuthContext.js";
 import { getMyOrders } from "../services/storefrontCustomerService.js";
@@ -28,6 +28,8 @@ const formatDate = (dateStr) =>
  * CustomerRoute that redirects to /store/:slug/account if not logged in).
  */
 const StorefrontMyOrders = ({ slug, storeName }) => {
+  const { slug: routeSlug } = useParams();
+  const storeSlug = slug || routeSlug;
   const { customer, logout, loading: authLoading } = useCustomerAuth();
   const navigate = useNavigate();
 
@@ -40,7 +42,7 @@ const StorefrontMyOrders = ({ slug, storeName }) => {
 
     const load = async () => {
       try {
-        const data = await getMyOrders(slug);
+        const data = await getMyOrders(storeSlug);
         if (!cancelled) {
           setOrders(data.orders || []);
         }
@@ -59,11 +61,11 @@ const StorefrontMyOrders = ({ slug, storeName }) => {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [storeSlug]);
 
   const handleLogout = async () => {
     await logout();
-    navigate(`/store/${slug}/account`, { replace: true });
+    navigate(`/store/${storeSlug}/account`, { replace: true });
   };
 
   if (authLoading) {
@@ -79,7 +81,7 @@ const StorefrontMyOrders = ({ slug, storeName }) => {
   return (
     <div className="my-orders-page">
       <header className="my-orders-header">
-        <Link to={`/store/${slug}`} className="my-orders-brand">
+        <Link to={`/store/${storeSlug}`} className="my-orders-brand">
           {storeName || "Store"}
         </Link>
 
@@ -99,18 +101,31 @@ const StorefrontMyOrders = ({ slug, storeName }) => {
           Orders placed at {storeName || "this store"} with your account.
         </p>
 
+        <Link className="my-orders-back-link" to={`/store/${storeSlug}`}>
+          ← Back to store
+        </Link>
+
         {loading && (
           <p style={{ color: "#68756d" }}>Loading your orders…</p>
         )}
 
         {error && (
-          <p className="auth-error" role="alert">{error}</p>
+          <div>
+            <p className="auth-error" role="alert">{error}</p>
+            {error.toLowerCase().includes("not found") && (
+              <p className="my-orders-store-note">
+                This store is not publicly available yet. The owner must have
+                the store approved before customers can browse it or view
+                orders.
+              </p>
+            )}
+          </div>
         )}
 
         {!loading && !error && orders.length === 0 && (
           <div className="my-orders-empty">
             <p>You haven't placed any orders yet.</p>
-            <Link to={`/store/${slug}`}>Browse products</Link>
+            <Link to={`/store/${storeSlug}`}>Browse products</Link>
           </div>
         )}
 
